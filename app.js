@@ -112,7 +112,7 @@ function initBoard() {
     draggable: true,
     position: "start",
     pieceTheme:
-      "https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/website/img/chesspieces/wikipedia/{piece}.png",
+      "https://cdn.jsdelivr.net/gh/oakmac/chessboardjs@v1.0.0/website/img/chesspieces/wikipedia/{piece}.png",
     onDragStart: handleDragStart,
     onDrop: handleDrop,
     onSnapEnd: handleSnapEnd,
