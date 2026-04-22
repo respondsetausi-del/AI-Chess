@@ -1,0 +1,308 @@
+:root {
+  --bg: #1f2024;
+  --panel: #2a2c33;
+  --panel-2: #34363f;
+  --text: #e8e8ea;
+  --muted: #9a9ca5;
+  --accent: #6aa9ff;
+  --accent-2: #4b8af0;
+  --danger: #e0655a;
+  --ok: #67c37a;
+  --last-move: rgba(255, 223, 102, 0.45);
+  --legal-dot: rgba(20, 85, 30, 0.45);
+  --legal-capture: rgba(180, 30, 30, 0.55);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+}
+
+.app {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px 20px 60px;
+}
+
+.header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.engine-status {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.engine-status.ready {
+  color: var(--ok);
+}
+
+.engine-status.error {
+  color: var(--danger);
+}
+
+.game {
+  display: grid;
+  grid-template-columns: minmax(320px, 1fr) 320px;
+  gap: 24px;
+  align-items: start;
+}
+
+@media (max-width: 860px) {
+  .game {
+    grid-template-columns: 1fr;
+  }
+}
+
+.board {
+  width: 100%;
+  max-width: 640px;
+  aspect-ratio: 1 / 1;
+  margin: 0 auto;
+}
+
+.sidebar {
+  background: var(--panel);
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.status-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.turn {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.status {
+  min-height: 18px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.status.check {
+  color: #f1c86b;
+}
+
+.status.mate,
+.status.resign {
+  color: var(--danger);
+}
+
+.status.draw {
+  color: var(--accent);
+}
+
+.controls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.control {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.control select,
+.control input[type="range"] {
+  width: 100%;
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid #42444d;
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 14px;
+}
+
+.control input[type="range"] {
+  padding: 0;
+  accent-color: var(--accent);
+}
+
+#skill-value {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+button {
+  background: var(--accent-2);
+  color: white;
+  border: 0;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.05s ease;
+}
+
+button:hover {
+  background: var(--accent);
+}
+
+button:active {
+  transform: translateY(1px);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+#resign {
+  background: #5a3a3a;
+}
+
+#resign:hover {
+  background: var(--danger);
+}
+
+.history-panel h2 {
+  margin: 0 0 6px;
+  font-size: 12px;
+  text-transform: uppercase;
+  color: var(--muted);
+  letter-spacing: 0.6px;
+}
+
+.history {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 260px;
+  overflow-y: auto;
+  background: var(--panel-2);
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+}
+
+.history li {
+  display: grid;
+  grid-template-columns: 34px 1fr 1fr;
+  gap: 4px;
+  padding: 2px 2px;
+}
+
+.history li .num {
+  color: var(--muted);
+}
+
+.history li .san {
+  color: var(--text);
+}
+
+.history li .san.empty {
+  color: var(--muted);
+}
+
+/* Board square highlights */
+.highlight-last {
+  box-shadow: inset 0 0 0 3px #d9b441;
+}
+
+.highlight-legal::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 32%;
+  height: 32%;
+  border-radius: 50%;
+  background: var(--legal-dot);
+  pointer-events: none;
+}
+
+.highlight-legal-capture {
+  box-shadow: inset 0 0 0 3px rgba(180, 30, 30, 0.75);
+}
+
+/* chessboard.js squares are position:relative by default; ensure overlay dots position correctly */
+.board .square-55d63 {
+  position: relative;
+}
+
+/* Modals */
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.modal.hidden {
+  display: none;
+}
+
+.modal-content {
+  background: var(--panel);
+  border-radius: 10px;
+  padding: 20px;
+  min-width: 280px;
+  max-width: 90vw;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  text-align: center;
+}
+
+.modal-content h2 {
+  margin: 0 0 12px;
+  font-size: 18px;
+}
+
+.promotion-choices {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+#gameover-detail {
+  color: var(--muted);
+  margin: 0 0 14px;
+}

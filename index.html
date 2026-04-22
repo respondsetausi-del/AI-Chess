@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Chess — Human vs AI</title>
+
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main class="app">
+      <header class="header">
+        <h1>Chess — Human vs AI</h1>
+        <p id="engine-status" class="engine-status">Loading engine…</p>
+      </header>
+
+      <section class="game">
+        <div id="board" class="board"></div>
+
+        <aside class="sidebar">
+          <div class="status-panel">
+            <div id="turn" class="turn">White to move</div>
+            <div id="status" class="status"></div>
+          </div>
+
+          <div class="controls">
+            <label class="control">
+              Play as
+              <select id="side">
+                <option value="w" selected>White</option>
+                <option value="b">Black</option>
+                <option value="r">Random</option>
+              </select>
+            </label>
+
+            <label class="control">
+              Difficulty <span id="skill-value">10</span>
+              <input
+                id="skill"
+                type="range"
+                min="0"
+                max="20"
+                value="10"
+              />
+            </label>
+
+            <label class="control">
+              Engine think time
+              <select id="movetime">
+                <option value="200">Fast (0.2s)</option>
+                <option value="500" selected>Normal (0.5s)</option>
+                <option value="1000">Slow (1s)</option>
+                <option value="2000">Deep (2s)</option>
+              </select>
+            </label>
+
+            <div class="buttons">
+              <button id="new-game" type="button">New Game</button>
+              <button id="undo" type="button">Undo</button>
+              <button id="flip" type="button">Flip</button>
+              <button id="resign" type="button">Resign</button>
+            </div>
+          </div>
+
+          <div class="history-panel">
+            <h2>Moves</h2>
+            <ol id="history" class="history"></ol>
+          </div>
+        </aside>
+      </section>
+    </main>
+
+    <div
+      id="promotion-modal"
+      class="modal hidden"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Choose promotion piece"
+    >
+      <div class="modal-content">
+        <h2>Promote to</h2>
+        <div class="promotion-choices">
+          <button type="button" data-piece="q">Queen</button>
+          <button type="button" data-piece="r">Rook</button>
+          <button type="button" data-piece="b">Bishop</button>
+          <button type="button" data-piece="n">Knight</button>
+        </div>
+      </div>
+    </div>
+
+    <div
+      id="gameover-modal"
+      class="modal hidden"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Game over"
+    >
+      <div class="modal-content">
+        <h2 id="gameover-title">Game over</h2>
+        <p id="gameover-detail"></p>
+        <button type="button" id="gameover-new">New Game</button>
+      </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://unpkg.com/chess.js@0.12.1/chess.js"></script>
+    <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
