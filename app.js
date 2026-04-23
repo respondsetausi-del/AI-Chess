@@ -58,6 +58,35 @@ const els = {
   lbClear: document.getElementById("lb-clear"),
   puOpening: document.getElementById("pu-opening"),
   puOpeningResult: document.getElementById("pu-opening-result"),
+  arenaPanel: document.getElementById("arena-panel"),
+  humanControls: document.getElementById("human-controls"),
+  arenaWhite: document.getElementById("arena-white"),
+  arenaBlack: document.getElementById("arena-black"),
+  arenaMovetime: document.getElementById("arena-movetime"),
+  arenaStart: document.getElementById("arena-start"),
+  arenaPause: document.getElementById("arena-pause"),
+  arenaStep: document.getElementById("arena-step"),
+  arenaReset: document.getElementById("arena-reset"),
+  arenaStatus: document.getElementById("arena-status"),
+};
+
+const ARENA_MODELS = [
+  { id: "claude-opus", label: "Claude Opus (sim)", skill: 18, avatar: "🧠" },
+  { id: "gpt-4", label: "GPT-4 (sim)", skill: 16, avatar: "🤖" },
+  { id: "gemini", label: "Gemini Pro (sim)", skill: 15, avatar: "✨" },
+  { id: "llama", label: "Llama 3 (sim)", skill: 12, avatar: "🦙" },
+  { id: "mistral", label: "Mistral (sim)", skill: 10, avatar: "🌬️" },
+  { id: "stockfish-20", label: "Stockfish 16 · max", skill: 20, avatar: "🐟" },
+  { id: "stockfish-8", label: "Stockfish · club", skill: 8, avatar: "🐟" },
+  { id: "stockfish-3", label: "Stockfish · novice", skill: 3, avatar: "🐟" },
+];
+
+const arena = {
+  active: false,
+  running: false,
+  white: null,
+  black: null,
+  movetime: 500,
 };
 
 const LB_KEY = "ai_chess_leaderboard_v1";
@@ -295,6 +324,11 @@ function onEngineMessage(e) {
   if (line.startsWith("bestmove")) {
     const parts = line.split(/\s+/);
     const move = parts[1];
+    if (arena.active) {
+      thinking = false;
+      if (move && move !== "(none)") arenaApplyMove(move);
+      return;
+    }
     if (awaitingSuggestion) {
       awaitingSuggestion = false;
       if (move && move !== "(none)") handleSuggestion(move);
@@ -335,6 +369,7 @@ function initBoard() {
 }
 
 function handleDragStart(source, piece) {
+  if (arena.active) return false;
   if (gameOver || thinking) return false;
   if (game.turn() !== humanColor) return false;
   if (
@@ -512,20 +547,206 @@ function oppSay(key) {
 /* ------------------------------------------------------------------ */
 
 function setMode(mode) {
+  const prevMode = currentMode;
   currentMode = mode;
   els.modeButtons.forEach((b) =>
     b.classList.toggle("active", b.dataset.mode === mode)
   );
+
   if (mode === "leaderboard") {
     els.viewGame.classList.add("hidden");
     els.viewLeaderboard.classList.remove("hidden");
-    if (typeof renderLeaderboard === "function") renderLeaderboard();
+    renderLeaderboard();
     return;
   }
   els.viewGame.classList.remove("hidden");
   els.viewLeaderboard.classList.add("hidden");
+
+  if (mode === "arena") {
+    enterArena();
+  } else if (prevMode === "arena") {
+    leaveArena();
+  }
+
   updateCoachPanel();
   if (mode === "coached" || mode === "team") maybeSuggest();
+}
+
+/* ------------------------------------------------------------------ */
+/*  Arena (model vs model)                                             */
+/* ------------------------------------------------------------------ */
+
+function populateArenaSelects() {
+  if (!els.arenaWhite || !els.arenaBlack) return;
+  if (els.arenaWhite.options.length) return; // already populated
+  for (const m of ARENA_MODELS) {
+    const o1 = document.createElement("option");
+    o1.value = m.id;
+    o1.textContent = `${m.avatar} ${m.label} · lvl ${m.skill}`;
+    els.arenaWhite.appendChild(o1);
+    const o2 = o1.cloneNode(true);
+    els.arenaBlack.appendChild(o2);
+  }
+  els.arenaWhite.value = "claude-opus";
+  els.arenaBlack.value = "gpt-4";
+}
+
+function modelById(id) {
+  return ARENA_MODELS.find((m) => m.id === id) || ARENA_MODELS[0];
+}
+
+function enterArena() {
+  populateArenaSelects();
+  arena.active = true;
+  arena.running = false;
+  els.arenaPanel.classList.remove("hidden");
+  els.humanControls.classList.add("hidden");
+  // Disable user dragging — board is read-only in arena.
+  if (board) {
+    board.position("start", false);
+    board.draggable = false;
+  }
+  game.reset();
+  resultRecorded = false;
+  gameOver = false;
+  thinking = false;
+  awaitingSuggestion = false;
+  lastMove = null;
+  refreshAfterMove();
+  arenaSetStatus("Pick two models and start the match.");
+  if (els.chatLog) els.chatLog.innerHTML = "";
+  chatPush("sys", "Arena mode — spectate two models");
+}
+
+function leaveArena() {
+  arena.active = false;
+  arena.running = false;
+  els.arenaPanel.classList.add("hidden");
+  els.humanControls.classList.remove("hidden");
+  if (engine) sendEngine("stop");
+  // Restore drag on board for human play.
+  if (board) initBoard();
+  newGame();
+}
+
+function arenaSetStatus(text, isError) {
+  if (!els.arenaStatus) return;
+  els.arenaStatus.textContent = text;
+  els.arenaStatus.classList.toggle("error", !!isError);
+}
+
+function arenaUpdateButtons() {
+  els.arenaStart.disabled = arena.running || gameOver;
+  els.arenaPause.disabled = !arena.running;
+  els.arenaStep.disabled = arena.running || gameOver;
+}
+
+function arenaStart() {
+  if (gameOver) {
+    arenaReset();
+  }
+  arena.white = modelById(els.arenaWhite.value);
+  arena.black = modelById(els.arenaBlack.value);
+  arena.movetime = Number(els.arenaMovetime.value) || 500;
+  arena.running = true;
+  arenaSetStatus(`${arena.white.label} (W) vs ${arena.black.label} (B) — playing…`);
+  arenaUpdateButtons();
+  arenaPlayNext();
+}
+
+function arenaStop() {
+  arena.running = false;
+  if (engine) sendEngine("stop");
+  arenaUpdateButtons();
+}
+
+function arenaPause() {
+  arenaStop();
+  arenaSetStatus("Paused. Resume with Start, or Step one move.");
+}
+
+function arenaReset() {
+  arena.running = false;
+  if (engine) sendEngine("stop");
+  game.reset();
+  resultRecorded = false;
+  gameOver = false;
+  lastMove = null;
+  if (board) board.position("start", false);
+  refreshAfterMove();
+  arenaSetStatus("Reset. Start the match when ready.");
+  arenaUpdateButtons();
+}
+
+function arenaStep() {
+  if (gameOver || !engineReady) return;
+  arena.white = modelById(els.arenaWhite.value);
+  arena.black = modelById(els.arenaBlack.value);
+  arena.movetime = Number(els.arenaMovetime.value) || 500;
+  arenaPlayNext();
+}
+
+function arenaPlayNext() {
+  if (!arena.active || gameOver) return;
+  if (!engineReady) {
+    arenaSetStatus("Engine not ready yet — waiting…", true);
+    return;
+  }
+  const side = game.turn() === "w" ? arena.white : arena.black;
+  thinking = true;
+  sendEngine(`setoption name Skill Level value ${side.skill}`);
+  sendEngine(`position fen ${game.fen()}`);
+  sendEngine(`go movetime ${arena.movetime}`);
+}
+
+function arenaApplyMove(uci) {
+  const from = uci.slice(0, 2);
+  const to = uci.slice(2, 4);
+  const promotion = uci.length > 4 ? uci[4] : undefined;
+  const move = game.move({ from, to, promotion: promotion || "q" });
+  if (!move) {
+    arenaSetStatus(`Engine returned illegal move: ${uci}`, true);
+    arena.running = false;
+    arenaUpdateButtons();
+    return;
+  }
+  lastMove = { from: move.from, to: move.to };
+  board.position(game.fen());
+  refreshAfterMove();
+
+  const moverName = move.color === "w" ? arena.white.label : arena.black.label;
+  if (move.captured) chatPush("opp", `${moverName}: ${move.san} — capture!`);
+  if (game.in_check() && !game.in_checkmate())
+    chatPush("opp", `${moverName}: ${move.san} — check.`);
+
+  if (game.game_over()) {
+    arena.running = false;
+    let outcome = "Draw";
+    if (game.in_checkmate()) {
+      const winner =
+        game.turn() === "w" ? arena.black.label : arena.white.label;
+      outcome = `${winner} wins by checkmate`;
+    } else if (game.in_stalemate()) outcome = "Draw — stalemate";
+    else if (game.insufficient_material()) outcome = "Draw — insufficient material";
+    else if (game.in_threefold_repetition()) outcome = "Draw — threefold repetition";
+    arenaSetStatus(outcome);
+    chatPush("sys", outcome);
+    gameOver = true;
+    arenaUpdateButtons();
+    return;
+  }
+
+  arenaSetStatus(
+    `Move ${Math.ceil(game.history().length / 2)} · ${
+      game.turn() === "w" ? arena.white.label : arena.black.label
+    } thinking…`
+  );
+
+  if (arena.running) {
+    setTimeout(arenaPlayNext, 80);
+  } else {
+    arenaUpdateButtons();
+  }
 }
 
 function updateCoachPanel() {
@@ -969,6 +1190,11 @@ if (els.lbClear) {
     renderLeaderboard();
   });
 }
+
+if (els.arenaStart) els.arenaStart.addEventListener("click", arenaStart);
+if (els.arenaPause) els.arenaPause.addEventListener("click", arenaPause);
+if (els.arenaStep) els.arenaStep.addEventListener("click", arenaStep);
+if (els.arenaReset) els.arenaReset.addEventListener("click", arenaReset);
 
 if (els.puOpening) {
   els.puOpening.addEventListener("click", () => {

@@ -235,6 +235,60 @@ button.secondary:hover {
   background: #42444d;
 }
 
+.arena-panel {
+  background: linear-gradient(180deg, #1f2c3a, #131c26);
+  border: 1px solid #2c425a;
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.arena-panel.hidden {
+  display: none;
+}
+
+.arena-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.arena-title {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  color: #b8d4ff;
+}
+
+.arena-sub {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.arena-status {
+  margin: 4px 0 0;
+  padding: 8px 10px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 6px;
+  font-size: 12px;
+  color: #b8d4ff;
+  min-height: 16px;
+}
+
+.arena-status.error {
+  color: var(--danger);
+}
+
+#human-controls.hidden,
+#human-controls.hidden + .powerups {
+  display: none;
+}
+
 .powerups {
   background: linear-gradient(180deg, #2e2a42, #1f1d2e);
   border: 1px solid #3f3856;

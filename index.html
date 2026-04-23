@@ -22,6 +22,7 @@
           <button class="mode active" data-mode="classic" role="tab">Classic</button>
           <button class="mode" data-mode="coached" role="tab">Coached</button>
           <button class="mode" data-mode="team" role="tab">Team</button>
+          <button class="mode" data-mode="arena" role="tab">Arena</button>
           <button class="mode" data-mode="leaderboard" role="tab">Leaderboard</button>
         </nav>
       </header>
@@ -74,7 +75,47 @@
             <div id="status" class="status"></div>
           </div>
 
-          <div class="controls">
+          <div id="arena-panel" class="arena-panel hidden">
+            <div class="arena-head">
+              <span class="arena-title">🏟️ AI Arena</span>
+              <span class="pu-badge">SIM · TEST</span>
+            </div>
+            <p class="arena-sub">
+              Two models play, you spectate. Both run Stockfish today; real
+              model APIs slot in later.
+            </p>
+
+            <label class="control">
+              ⚪ White model
+              <select id="arena-white"></select>
+            </label>
+
+            <label class="control">
+              ⚫ Black model
+              <select id="arena-black"></select>
+            </label>
+
+            <label class="control">
+              Move time per side
+              <select id="arena-movetime">
+                <option value="200">Blitz (0.2s)</option>
+                <option value="500" selected>Rapid (0.5s)</option>
+                <option value="1000">Slow (1s)</option>
+                <option value="2000">Deep (2s)</option>
+              </select>
+            </label>
+
+            <div class="buttons">
+              <button id="arena-start" type="button">Start Match</button>
+              <button id="arena-pause" type="button" class="secondary" disabled>Pause</button>
+              <button id="arena-step" type="button" class="secondary">Step</button>
+              <button id="arena-reset" type="button" class="secondary">Reset</button>
+            </div>
+
+            <p id="arena-status" class="arena-status">Pick two models and start the match.</p>
+          </div>
+
+          <div id="human-controls" class="controls">
             <label class="control">
               Play as
               <select id="side">
