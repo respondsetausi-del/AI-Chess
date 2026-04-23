@@ -69,7 +69,26 @@ const els = {
   arenaStep: document.getElementById("arena-step"),
   arenaReset: document.getElementById("arena-reset"),
   arenaStatus: document.getElementById("arena-status"),
+  libraryCount: document.getElementById("library-count"),
+  libraryList: document.getElementById("library-list"),
+  librarySummary: document.getElementById("library-summary"),
 };
+
+const SPELL_KEY = "ai_chess_spells_v1";
+
+const MOTIF_SPELLS = [
+  { id: "motif:castle", name: "Castle of Refuge", kind: "Motif", desc: "You castled. The king tucks behind a wall of pawns." },
+  { id: "motif:promote-q", name: "Pawn's Apotheosis", kind: "Motif", desc: "Promoted a pawn to a queen. The lowest piece becomes the highest." },
+  { id: "motif:promote-minor", name: "Underpromotion", kind: "Motif", desc: "Promoted to a minor piece — sometimes the only winning choice." },
+  { id: "motif:en-passant", name: "En Passant", kind: "Motif", desc: "Took a pawn that just stepped two squares. Use it or lose it." },
+  { id: "motif:knight-fork", name: "Knight's Fork", kind: "Motif", desc: "A single knight forks two or more enemy pieces of value." },
+  { id: "motif:check", name: "First Blood", kind: "Motif", desc: "Delivered check. Pressure begins." },
+  { id: "motif:checkmate", name: "Mate in Hand", kind: "Motif", desc: "Delivered checkmate. Done." },
+  { id: "motif:double-check", name: "Double Check", kind: "Motif", desc: "Two pieces deliver check at once — only the king can move." },
+  { id: "motif:capture-queen", name: "Regicide-Adjacent", kind: "Motif", desc: "Captured the enemy queen." },
+];
+
+let unlockedSpells = new Set();
 
 const ARENA_MODELS = [
   { id: "claude-opus", label: "Claude Opus (sim)", skill: 18, avatar: "🧠" },
@@ -127,6 +146,134 @@ const OPENING_BOOK = [
   { name: "King's Indian Attack", eco: "A07", moves: ["Nf3", "d5", "g3"] },
   { name: "Bird's Opening", eco: "A02", moves: ["f4"] },
 ];
+
+function loadUnlocked() {
+  try {
+    const arr = JSON.parse(localStorage.getItem(SPELL_KEY)) || [];
+    return new Set(arr);
+  } catch {
+    return new Set();
+  }
+}
+
+function saveUnlocked() {
+  localStorage.setItem(SPELL_KEY, JSON.stringify([...unlockedSpells]));
+}
+
+function unlockSpell(id, name, desc) {
+  if (unlockedSpells.has(id)) return false;
+  unlockedSpells.add(id);
+  saveUnlocked();
+  showSpellToast(name, desc);
+  renderLibrary();
+  return true;
+}
+
+function showSpellToast(name, desc) {
+  let toast = document.getElementById("spell-toast");
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.id = "spell-toast";
+    toast.className = "spell-toast";
+    document.body.appendChild(toast);
+  }
+  toast.innerHTML = `
+    <div class="st-head">✨ Spell unlocked</div>
+    <div class="st-name">${name}</div>
+    <div class="st-desc">${desc}</div>
+  `;
+  // Force reflow so the show transition fires reliably.
+  // eslint-disable-next-line no-unused-expressions
+  toast.offsetHeight;
+  toast.classList.add("show");
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => toast.classList.remove("show"), 4500);
+}
+
+function fullSpellCatalog() {
+  return [
+    ...OPENING_BOOK.map((o) => ({
+      id: `opening:${o.eco}`,
+      name: `${o.name}`,
+      kind: o.eco,
+    })),
+    ...MOTIF_SPELLS.map((s) => ({ id: s.id, name: s.name, kind: s.kind })),
+  ];
+}
+
+function renderLibrary() {
+  if (!els.libraryList || !els.libraryCount) return;
+  const catalog = fullSpellCatalog();
+  els.libraryCount.textContent = `${unlockedSpells.size} / ${catalog.length}`;
+  if (els.librarySummary) {
+    els.librarySummary.textContent = `View unlocks (${unlockedSpells.size})`;
+  }
+  catalog.sort((a, b) => {
+    const ua = unlockedSpells.has(a.id) ? 0 : 1;
+    const ub = unlockedSpells.has(b.id) ? 0 : 1;
+    if (ua !== ub) return ua - ub;
+    return a.name.localeCompare(b.name);
+  });
+  els.libraryList.innerHTML = "";
+  for (const item of catalog) {
+    const li = document.createElement("li");
+    const unlocked = unlockedSpells.has(item.id);
+    li.className = `spell ${unlocked ? "unlocked" : "locked"}`;
+    const name = document.createElement("span");
+    name.className = "spell-name";
+    name.textContent = unlocked ? item.name : "???";
+    const kind = document.createElement("span");
+    kind.className = "spell-kind";
+    kind.textContent = item.kind;
+    li.append(name, kind);
+    els.libraryList.appendChild(li);
+  }
+}
+
+function detectMotifSpells(move) {
+  if (move.san === "O-O" || move.san === "O-O-O") {
+    const s = MOTIF_SPELLS.find((x) => x.id === "motif:castle");
+    unlockSpell(s.id, s.name, s.desc);
+  }
+  if (move.flags && move.flags.includes("p")) {
+    const id = move.promotion === "q" ? "motif:promote-q" : "motif:promote-minor";
+    const s = MOTIF_SPELLS.find((x) => x.id === id);
+    unlockSpell(s.id, s.name, s.desc);
+  }
+  if (move.flags && move.flags.includes("e")) {
+    const s = MOTIF_SPELLS.find((x) => x.id === "motif:en-passant");
+    unlockSpell(s.id, s.name, s.desc);
+  }
+  if (move.captured === "q") {
+    const s = MOTIF_SPELLS.find((x) => x.id === "motif:capture-queen");
+    unlockSpell(s.id, s.name, s.desc);
+  }
+  if (move.san.includes("#")) {
+    const s = MOTIF_SPELLS.find((x) => x.id === "motif:checkmate");
+    unlockSpell(s.id, s.name, s.desc);
+  } else if (move.san.includes("+")) {
+    const s = MOTIF_SPELLS.find((x) => x.id === "motif:check");
+    unlockSpell(s.id, s.name, s.desc);
+  }
+  if (move.piece === "n") {
+    const threats = listThreatsFromSquare(move.to);
+    const valuable = threats.filter(
+      (t) => t.captured && PIECE_VALUES[t.captured] > 1
+    );
+    const distinct = new Set(valuable.map((t) => t.to));
+    if (distinct.size >= 2) {
+      const s = MOTIF_SPELLS.find((x) => x.id === "motif:knight-fork");
+      unlockSpell(s.id, s.name, s.desc);
+    }
+  }
+}
+
+function detectOpeningSpell() {
+  const op = detectOpening();
+  if (!op) return;
+  const id = `opening:${op.eco}`;
+  unlockSpell(id, `${op.name} (${op.eco})`, `Played the ${op.name} opening line.`);
+}
 
 function detectOpening() {
   const sans = game.history();
@@ -437,6 +584,8 @@ function afterHumanMove(move) {
   refreshAfterMove();
   if (move.captured) oppSay("humanCapture");
   if (game.in_check() && !game.in_checkmate()) oppSay("checked");
+  detectMotifSpells(move);
+  detectOpeningSpell();
   if (!checkGameOver()) maybeEngineMove();
 }
 
@@ -1505,6 +1654,8 @@ document.addEventListener("DOMContentLoaded", () => {
   initBoard();
   updateTurn();
   renderCaptured();
+  unlockedSpells = loadUnlocked();
+  renderLibrary();
   chatPush("sys", "New game");
   oppSay("greet");
   loadEngine();

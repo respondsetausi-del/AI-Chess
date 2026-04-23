@@ -384,6 +384,152 @@ button.secondary:hover {
   font-size: 12px;
 }
 
+.library {
+  background: linear-gradient(180deg, #16323a, #0e2128);
+  border: 1px solid #244c58;
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.library-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.library-title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: #9ee0d6;
+}
+
+.library-count {
+  font-size: 11px;
+  font-weight: 700;
+  color: #052;
+  background: #9ee0d6;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-variant-numeric: tabular-nums;
+}
+
+.library-sub {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.library-details summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: #9ee0d6;
+  list-style: none;
+  padding: 4px 0;
+}
+
+.library-details summary::marker {
+  display: none;
+}
+
+.library-details[open] summary {
+  margin-bottom: 4px;
+}
+
+.library-list {
+  margin: 0;
+  padding: 6px 8px;
+  list-style: none;
+  max-height: 220px;
+  overflow-y: auto;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 6px;
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.library-list .spell {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 3px 4px;
+  border-radius: 4px;
+}
+
+.library-list .spell.unlocked {
+  color: #d6f3ee;
+}
+
+.library-list .spell.locked {
+  color: #4d6770;
+  font-style: italic;
+}
+
+.library-list .spell-kind {
+  font-size: 10px;
+  color: #5fa499;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  flex-shrink: 0;
+  align-self: center;
+}
+
+.library-list .spell.locked .spell-kind {
+  color: #3a525a;
+}
+
+.spell-toast {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  background: linear-gradient(135deg, #16323a, #1a4554);
+  border: 1px solid #4dc1aa;
+  border-radius: 10px;
+  padding: 14px 18px;
+  min-width: 260px;
+  max-width: 360px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5),
+    0 0 30px rgba(77, 193, 170, 0.25);
+  color: #d6f3ee;
+  z-index: 30;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  pointer-events: none;
+}
+
+.spell-toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.spell-toast .st-head {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: #9ee0d6;
+}
+
+.spell-toast .st-name {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 4px 0 4px;
+}
+
+.spell-toast .st-desc {
+  font-size: 13px;
+  line-height: 1.4;
+  color: #a8c8c2;
+}
+
 .engine-status {
   margin: 0;
   color: var(--muted);
