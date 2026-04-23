@@ -129,6 +129,21 @@ body {
   line-height: 1.5;
 }
 
+.opp-intent {
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  background: rgba(241, 200, 107, 0.12);
+  border-left: 3px solid rgba(241, 200, 107, 0.7);
+  border-radius: 4px;
+  font-size: 13px;
+  color: #f1c86b;
+  line-height: 1.4;
+}
+
+.opp-intent.hidden {
+  display: none;
+}
+
 .coach-actions {
   display: flex;
   gap: 8px;

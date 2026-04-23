@@ -46,6 +46,7 @@ const els = {
   teamActions: document.getElementById("team-actions"),
   teamAccept: document.getElementById("team-accept"),
   teamOverride: document.getElementById("team-override"),
+  oppIntent: document.getElementById("opp-intent"),
   chatLog: document.getElementById("chat-log"),
   chatForm: document.getElementById("chat-form"),
   chatInput: document.getElementById("chat-input"),
@@ -432,6 +433,7 @@ function handleSnapEnd() {
 function afterHumanMove(move) {
   lastMove = { from: move.from, to: move.to };
   clearSuggestHighlight();
+  hideOppIntent();
   refreshAfterMove();
   if (move.captured) oppSay("humanCapture");
   if (game.in_check() && !game.in_checkmate()) oppSay("checked");
@@ -468,6 +470,7 @@ function applyEngineMove(uci) {
   refreshAfterMove();
   if (move.captured) oppSay("oppCapture");
   if (game.in_check() && !game.in_checkmate()) oppSay("check");
+  showOppIntent(move);
   if (!checkGameOver()) maybeSuggest();
 }
 
@@ -765,6 +768,7 @@ function updateCoachPanel() {
   if (currentMode === "classic") {
     els.coachPanel.classList.add("hidden");
     clearSuggestHighlight();
+    hideOppIntent();
     return;
   }
   els.coachPanel.classList.remove("hidden");
@@ -857,6 +861,66 @@ function describeMoveReason(move) {
     return "centralizes the rook on an open file";
   if (move.piece === "q") return "activates the queen";
   return "improves the position";
+}
+
+function listThreatsFromSquare(sq) {
+  // Re-derive what the just-moved piece on `sq` now attacks by flipping the
+  // side-to-move on the current FEN and listing capturing moves from that
+  // square.
+  const parts = game.fen().split(" ");
+  parts[1] = parts[1] === "w" ? "b" : "w";
+  parts[3] = "-";
+  let tmp;
+  try {
+    tmp = new Chess(parts.join(" "));
+  } catch {
+    return [];
+  }
+  if (!tmp || !tmp.fen()) return [];
+  return tmp.moves({ verbose: true }).filter(
+    (m) => m.from === sq && m.captured
+  );
+}
+
+function hideOppIntent() {
+  if (els.oppIntent) {
+    els.oppIntent.textContent = "";
+    els.oppIntent.classList.add("hidden");
+  }
+}
+
+function showOppIntent(move) {
+  if (!els.oppIntent) return;
+  if (currentMode !== "coached" && currentMode !== "team") {
+    hideOppIntent();
+    return;
+  }
+  const NAMES = {
+    p: "pawn", n: "knight", b: "bishop", r: "rook", q: "queen", k: "king",
+  };
+  let text = `Opponent played ${move.san}`;
+  if (move.san.includes("#")) {
+    text += " — checkmate.";
+  } else if (move.captured) {
+    text += ` — captured your ${NAMES[move.captured]}.`;
+  } else if (move.san.includes("+")) {
+    text += " — check on your king.";
+  } else if (move.san === "O-O" || move.san === "O-O-O") {
+    text += " — castled to safety.";
+  } else {
+    text += `, ${describeMoveReason(move)}.`;
+  }
+
+  const threats = listThreatsFromSquare(move.to);
+  if (threats.length) {
+    const targets = threats
+      .slice(0, 2)
+      .map((t) => `your ${NAMES[t.captured]} on ${t.to}`)
+      .join(" and ");
+    text += ` Now eyes ${targets}.`;
+  }
+  els.oppIntent.textContent = text;
+  els.oppIntent.classList.remove("hidden");
 }
 
 function uciToSanWithPremoves(uci, premoves) {
