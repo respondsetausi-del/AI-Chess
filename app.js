@@ -50,7 +50,17 @@ const els = {
   chatForm: document.getElementById("chat-form"),
   chatInput: document.getElementById("chat-input"),
   muteChat: document.getElementById("mute-chat"),
+  gameoverClose: document.getElementById("gameover-close"),
+  reviewList: document.getElementById("review-list"),
+  lbBody: document.getElementById("lb-body"),
+  lbNameForm: document.getElementById("lb-name-form"),
+  lbName: document.getElementById("lb-name"),
+  lbClear: document.getElementById("lb-clear"),
 };
+
+const LB_KEY = "ai_chess_leaderboard_v1";
+const LB_NAME_KEY = "ai_chess_name_v1";
+let resultRecorded = false;
 
 const PERSONAS = {
   smashmouth: {
@@ -636,9 +646,11 @@ function checkGameOver() {
   }
   showGameOver(title, detail);
   if (game.in_checkmate()) {
-    // The side to move is checkmated — so if it's the human's turn, opponent won.
     const oppWon = game.turn() === humanColor;
     oppSay(oppWon ? "win" : "lose");
+    recordResult(oppWon ? "loss" : "win");
+  } else {
+    recordResult("draw");
   }
   return true;
 }
@@ -726,7 +738,133 @@ els.promotion.querySelectorAll("button[data-piece]").forEach((btn) => {
 function showGameOver(title, detail) {
   els.gameoverTitle.textContent = title;
   els.gameoverDetail.textContent = detail;
+  renderReview();
   els.gameover.classList.remove("hidden");
+}
+
+function renderReview() {
+  if (!els.reviewList) return;
+  els.reviewList.innerHTML = "";
+  const verbose = game.history({ verbose: true });
+  if (!verbose.length) {
+    const li = document.createElement("li");
+    li.textContent = "No moves played.";
+    els.reviewList.appendChild(li);
+    return;
+  }
+  const TAGS = [
+    { k: "good", label: "good" },
+    { k: "", label: "ok" },
+    { k: "", label: "ok" },
+    { k: "dubious", label: "?!" },
+    { k: "blunder", label: "??" },
+  ];
+  for (let i = 0; i < verbose.length; i++) {
+    const m = verbose[i];
+    const li = document.createElement("li");
+    const num = document.createElement("span");
+    num.className = "rv-num";
+    num.textContent = `${Math.floor(i / 2) + 1}${m.color === "w" ? "." : "…"}`;
+    const mv = document.createElement("span");
+    mv.className = "rv-move";
+    mv.textContent = m.san;
+    const tag = document.createElement("span");
+    // Stub: random-ish tagging seeded by move index so it's stable for a game.
+    const pickTag = TAGS[(i * 7 + m.san.length) % TAGS.length];
+    tag.className = `rv-tag ${pickTag.k}`;
+    tag.textContent = pickTag.label;
+    li.append(num, mv, tag);
+    els.reviewList.appendChild(li);
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Leaderboard                                                        */
+/* ------------------------------------------------------------------ */
+
+function loadLb() {
+  try {
+    return JSON.parse(localStorage.getItem(LB_KEY)) || [];
+  } catch {
+    return [];
+  }
+}
+
+function saveLb(rows) {
+  localStorage.setItem(LB_KEY, JSON.stringify(rows));
+}
+
+function currentName() {
+  return localStorage.getItem(LB_NAME_KEY) || "";
+}
+
+function recordResult(outcome) {
+  // outcome: "win" | "loss" | "draw"
+  if (resultRecorded) return;
+  resultRecorded = true;
+  const name = currentName();
+  if (!name) return;
+  const rows = loadLb();
+  let row = rows.find((r) => r.name === name);
+  if (!row) {
+    row = { name, w: 0, l: 0, d: 0, bestLevel: null };
+    rows.push(row);
+  }
+  const lvl = Number(els.skill.value);
+  if (outcome === "win") {
+    row.w += 1;
+    if (row.bestLevel === null || lvl > row.bestLevel) row.bestLevel = lvl;
+  } else if (outcome === "loss") {
+    row.l += 1;
+  } else {
+    row.d += 1;
+  }
+  saveLb(rows);
+}
+
+function renderLeaderboard() {
+  if (!els.lbBody) return;
+  const name = currentName();
+  if (els.lbName) els.lbName.value = name;
+  const rows = loadLb().slice().sort((a, b) => {
+    const aPct = a.w + a.l ? a.w / (a.w + a.l) : 0;
+    const bPct = b.w + b.l ? b.w / (b.w + b.l) : 0;
+    if (bPct !== aPct) return bPct - aPct;
+    return b.w - a.w;
+  });
+  els.lbBody.innerHTML = "";
+  if (!rows.length) {
+    const tr = document.createElement("tr");
+    tr.className = "lb-empty";
+    const td = document.createElement("td");
+    td.colSpan = 7;
+    td.textContent = "No games recorded yet. Save a handle, then play.";
+    tr.appendChild(td);
+    els.lbBody.appendChild(tr);
+    return;
+  }
+  rows.forEach((r, i) => {
+    const tr = document.createElement("tr");
+    if (r.name === name) tr.className = "you";
+    const games = r.w + r.l;
+    const pct = games ? Math.round((r.w / games) * 100) : 0;
+    const cells = [
+      i + 1,
+      r.name,
+      r.w,
+      r.l,
+      r.d,
+      games ? `${pct}%` : "—",
+      r.bestLevel ?? "—",
+    ];
+    cells.forEach((c, idx) => {
+      const td = document.createElement("td");
+      if (idx === 0) td.className = "rank";
+      td.textContent = c;
+      tr.appendChild(td);
+    });
+    els.lbBody.appendChild(tr);
+  });
 }
 
 function hideGameOver() {
@@ -737,6 +875,28 @@ els.gameoverNew.addEventListener("click", () => {
   hideGameOver();
   newGame();
 });
+
+if (els.gameoverClose) {
+  els.gameoverClose.addEventListener("click", hideGameOver);
+}
+
+if (els.lbNameForm) {
+  els.lbNameForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const v = (els.lbName.value || "").trim().slice(0, 24);
+    if (!v) return;
+    localStorage.setItem(LB_NAME_KEY, v);
+    renderLeaderboard();
+  });
+}
+
+if (els.lbClear) {
+  els.lbClear.addEventListener("click", () => {
+    if (!confirm("Clear your local leaderboard? This can't be undone.")) return;
+    localStorage.removeItem(LB_KEY);
+    renderLeaderboard();
+  });
+}
 
 /* ------------------------------------------------------------------ */
 /*  Controls                                                           */
@@ -810,6 +970,8 @@ els.resign.addEventListener("click", () => {
   els.status.textContent = "Resigned";
   els.status.className = "status resign";
   showGameOver("Resigned", `${winner} wins by resignation.`);
+  oppSay("win");
+  recordResult("loss");
 });
 
 els.side.addEventListener("change", () => {
@@ -849,6 +1011,7 @@ function newGame() {
   oppSay("greet");
   suggestedMove = null;
   awaitingSuggestion = false;
+  resultRecorded = false;
   updateCoachPanel();
   if (els.coachHint) els.coachHint.textContent = "Make a move to get a hint.";
   refreshAfterMove();

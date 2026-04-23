@@ -179,10 +179,18 @@
       aria-modal="true"
       aria-label="Game over"
     >
-      <div class="modal-content">
+      <div class="modal-content modal-lg">
         <h2 id="gameover-title">Game over</h2>
         <p id="gameover-detail"></p>
-        <button type="button" id="gameover-new">New Game</button>
+        <section class="review">
+          <h3>Post-game review</h3>
+          <p class="review-sub">Stub annotations — real Stockfish analysis lands next.</p>
+          <ol id="review-list" class="review-list"></ol>
+        </section>
+        <div class="modal-buttons">
+          <button type="button" id="gameover-new">New Game</button>
+          <button type="button" class="secondary" id="gameover-close">Close</button>
+        </div>
       </div>
     </div>
 
