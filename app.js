@@ -36,6 +36,16 @@ const els = {
   oppName: document.getElementById("opp-name"),
   oppSub: document.getElementById("opp-sub"),
   oppAvatar: document.getElementById("opp-avatar"),
+  modeButtons: document.querySelectorAll(".mode"),
+  viewGame: document.getElementById("view-game"),
+  viewLeaderboard: document.getElementById("view-leaderboard"),
+  coachPanel: document.getElementById("coach-panel"),
+  coachLabel: document.getElementById("coach-label"),
+  coachSub: document.getElementById("coach-sub"),
+  coachHint: document.getElementById("coach-hint"),
+  teamActions: document.getElementById("team-actions"),
+  teamAccept: document.getElementById("team-accept"),
+  teamOverride: document.getElementById("team-override"),
   chatLog: document.getElementById("chat-log"),
   chatForm: document.getElementById("chat-form"),
   chatInput: document.getElementById("chat-input"),
@@ -134,6 +144,28 @@ const PERSONAS = {
 let currentPersona = PERSONAS.smashmouth;
 let chatMuted = false;
 
+let currentMode = "classic"; // classic | coached | team
+let suggestedMove = null;    // { from, to, promotion } from Stockfish for coach/team
+let awaitingSuggestion = false;
+
+const COACH_HINTS_OPENING = [
+  "Develop a minor piece toward the center.",
+  "Control the center before moving the same piece twice.",
+  "Castle early to tuck your king behind a pawn wall.",
+  "Don't bring the queen out too soon — she gets chased.",
+];
+const COACH_HINTS_MIDDLE = [
+  "Look for tactics: forks, pins, discovered attacks.",
+  "Pieces before pawns — activity matters more than material here.",
+  "Trade when ahead, complicate when behind.",
+  "Find your worst-placed piece and improve it.",
+];
+const COACH_HINTS_ENDING = [
+  "King becomes a fighter in the endgame — activate it.",
+  "Push passed pawns. Every tempo counts.",
+  "Rook behind a passed pawn, always.",
+];
+
 const game = new Chess();
 let board = null;
 let humanColor = "w";
@@ -192,12 +224,18 @@ function onEngineMessage(e) {
       engineReady = true;
       setEngineStatus("Engine ready", "ready");
       maybeEngineMove();
+      maybeSuggest();
     }
     return;
   }
   if (line.startsWith("bestmove")) {
     const parts = line.split(/\s+/);
     const move = parts[1];
+    if (awaitingSuggestion) {
+      awaitingSuggestion = false;
+      if (move && move !== "(none)") handleSuggestion(move);
+      return;
+    }
     thinking = false;
     if (!move || move === "(none)") return;
     applyEngineMove(move);
@@ -293,6 +331,11 @@ function maybeEngineMove() {
   if (gameOver) return;
   if (!engineReady) return;
   if (game.turn() === humanColor) return;
+  if (awaitingSuggestion) {
+    // Cancel the pending suggestion; opponent's move takes priority.
+    awaitingSuggestion = false;
+    sendEngine("stop");
+  }
   thinking = true;
   applySkill();
   sendEngine(`position fen ${game.fen()}`);
@@ -314,7 +357,7 @@ function applyEngineMove(uci) {
   refreshAfterMove();
   if (move.captured) oppSay("oppCapture");
   if (game.in_check() && !game.in_checkmate()) oppSay("check");
-  checkGameOver();
+  if (!checkGameOver()) maybeSuggest();
 }
 
 function refreshAfterMove() {
@@ -397,6 +440,102 @@ function oppSay(key) {
   const pool = currentPersona[key];
   if (!pool || !pool.length) return;
   chatPush("opp", pick(pool));
+}
+
+/* ------------------------------------------------------------------ */
+/*  Modes + coach                                                      */
+/* ------------------------------------------------------------------ */
+
+function setMode(mode) {
+  currentMode = mode;
+  els.modeButtons.forEach((b) =>
+    b.classList.toggle("active", b.dataset.mode === mode)
+  );
+  if (mode === "leaderboard") {
+    els.viewGame.classList.add("hidden");
+    els.viewLeaderboard.classList.remove("hidden");
+    if (typeof renderLeaderboard === "function") renderLeaderboard();
+    return;
+  }
+  els.viewGame.classList.remove("hidden");
+  els.viewLeaderboard.classList.add("hidden");
+  updateCoachPanel();
+  if (mode === "coached" || mode === "team") maybeSuggest();
+}
+
+function updateCoachPanel() {
+  if (!els.coachPanel) return;
+  if (currentMode === "classic") {
+    els.coachPanel.classList.add("hidden");
+    return;
+  }
+  els.coachPanel.classList.remove("hidden");
+  if (currentMode === "coached") {
+    els.coachLabel.textContent = "Coach";
+    els.coachSub.textContent = "Plain-English hints";
+    els.teamActions.classList.add("hidden");
+  } else if (currentMode === "team") {
+    els.coachLabel.textContent = "Team mode";
+    els.coachSub.textContent = "You + coach vs opponent";
+    els.teamActions.classList.remove("hidden");
+  }
+}
+
+function phaseHint() {
+  const moves = game.history().length;
+  const pool =
+    moves < 16
+      ? COACH_HINTS_OPENING
+      : moves < 40
+      ? COACH_HINTS_MIDDLE
+      : COACH_HINTS_ENDING;
+  return pick(pool);
+}
+
+function maybeSuggest() {
+  if (!engineReady || gameOver) return;
+  if (currentMode !== "coached" && currentMode !== "team") return;
+  if (game.turn() !== humanColor) return;
+  if (thinking || awaitingSuggestion) return;
+  suggestedMove = null;
+  awaitingSuggestion = true;
+  els.coachHint.textContent = "Thinking…";
+  sendEngine(`position fen ${game.fen()}`);
+  sendEngine(`go movetime 400`);
+}
+
+function handleSuggestion(uci) {
+  const from = uci.slice(0, 2);
+  const to = uci.slice(2, 4);
+  const promotion = uci.length > 4 ? uci[4] : undefined;
+  // Preview via chess.js without mutating: try, then undo.
+  const move = game.move({ from, to, promotion: promotion || "q" });
+  if (!move) {
+    els.coachHint.textContent = phaseHint();
+    return;
+  }
+  const san = move.san;
+  game.undo();
+  suggestedMove = { from, to, promotion };
+  if (currentMode === "team") {
+    els.coachHint.textContent = `Coach suggests ${san}. Play it, or pick your own.`;
+  } else {
+    els.coachHint.textContent = `Coach suggests ${san}. ${phaseHint()}`;
+  }
+}
+
+function acceptSuggestion() {
+  if (!suggestedMove) return;
+  const { from, to, promotion } = suggestedMove;
+  const move = game.move({ from, to, promotion: promotion || "q" });
+  if (!move) return;
+  suggestedMove = null;
+  afterHumanMove(move);
+}
+
+function overrideSuggestion() {
+  suggestedMove = null;
+  els.coachHint.textContent = "Your call. Make a move.";
 }
 
 function renderTray(el, captured, color) {
@@ -635,6 +774,13 @@ if (els.muteChat) {
   });
 }
 
+els.modeButtons.forEach((b) =>
+  b.addEventListener("click", () => setMode(b.dataset.mode))
+);
+
+if (els.teamAccept) els.teamAccept.addEventListener("click", acceptSuggestion);
+if (els.teamOverride) els.teamOverride.addEventListener("click", overrideSuggestion);
+
 els.newGame.addEventListener("click", newGame);
 
 els.undo.addEventListener("click", () => {
@@ -701,8 +847,13 @@ function newGame() {
   applyPersona();
   chatPush("sys", "New game");
   oppSay("greet");
+  suggestedMove = null;
+  awaitingSuggestion = false;
+  updateCoachPanel();
+  if (els.coachHint) els.coachHint.textContent = "Make a move to get a hint.";
   refreshAfterMove();
   if (game.turn() !== humanColor) maybeEngineMove();
+  else maybeSuggest();
 }
 
 /* ------------------------------------------------------------------ */

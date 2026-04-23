@@ -12,10 +12,18 @@
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <main class="app">
+    <main class="app" id="view-game">
       <header class="header">
-        <h1>Chess — Human vs AI</h1>
-        <p id="engine-status" class="engine-status">Loading engine…</p>
+        <div class="brand">
+          <h1>Chess — Human vs AI</h1>
+          <p id="engine-status" class="engine-status">Loading engine…</p>
+        </div>
+        <nav class="modes" role="tablist">
+          <button class="mode active" data-mode="classic" role="tab">Classic</button>
+          <button class="mode" data-mode="coached" role="tab">Coached</button>
+          <button class="mode" data-mode="team" role="tab">Team</button>
+          <button class="mode" data-mode="leaderboard" role="tab">Leaderboard</button>
+        </nav>
       </header>
 
       <section class="game">
@@ -46,6 +54,17 @@
             <span class="tray-name" id="tray-bottom-name">You</span>
             <div class="captured" id="captured-bottom"></div>
             <span class="material-diff" id="material-bottom"></span>
+          </div>
+          <div id="coach-panel" class="coach-panel hidden">
+            <div class="coach-head">
+              <span class="coach-label" id="coach-label">Coach</span>
+              <span class="coach-sub" id="coach-sub">Plain-English hints</span>
+            </div>
+            <p id="coach-hint" class="coach-hint">Make a move to get a hint.</p>
+            <div class="coach-actions hidden" id="team-actions">
+              <button id="team-accept" type="button">Play suggested move</button>
+              <button id="team-override" type="button" class="secondary">I'll pick myself</button>
+            </div>
           </div>
         </div>
 
@@ -111,6 +130,29 @@
         </aside>
       </section>
     </main>
+
+    <section class="app view-leaderboard hidden" id="view-leaderboard">
+      <div class="leaderboard">
+        <header class="lb-head">
+          <h2>Leaderboard</h2>
+          <p class="lb-sub">Local only for now — global ranking ships with the backend.</p>
+          <form id="lb-name-form" class="lb-name-form">
+            <label for="lb-name">Your handle</label>
+            <input id="lb-name" type="text" maxlength="24" placeholder="e.g. QueenSlayer" />
+            <button type="submit">Save</button>
+          </form>
+        </header>
+        <table class="lb-table">
+          <thead>
+            <tr>
+              <th>#</th><th>Player</th><th>W</th><th>L</th><th>D</th><th>Win %</th><th>Best lvl</th>
+            </tr>
+          </thead>
+          <tbody id="lb-body"></tbody>
+        </table>
+        <button class="secondary" id="lb-clear" type="button">Clear local board</button>
+      </div>
+    </section>
 
     <div
       id="promotion-modal"
