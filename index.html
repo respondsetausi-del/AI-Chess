@@ -19,6 +19,22 @@
       </header>
 
       <section class="game">
+        <aside class="chat-panel">
+          <div class="chat-header">
+            <div class="avatar" id="opp-avatar">♞</div>
+            <div class="opp-meta">
+              <div class="opp-name" id="opp-name">Smashmouth</div>
+              <div class="opp-sub" id="opp-sub">Aggressive · lvl 10</div>
+            </div>
+            <button id="mute-chat" type="button" class="mute" title="Toggle trash-talk">🔊</button>
+          </div>
+          <div id="chat-log" class="chat-log" aria-live="polite"></div>
+          <form id="chat-form" class="chat-form">
+            <input id="chat-input" type="text" placeholder="Talk smack…" autocomplete="off" maxlength="140" />
+            <button type="submit">Send</button>
+          </form>
+        </aside>
+
         <div class="board-area">
           <div class="tray" id="tray-top">
             <span class="tray-name" id="tray-top-name">Opponent</span>
@@ -46,6 +62,16 @@
                 <option value="w" selected>White</option>
                 <option value="b">Black</option>
                 <option value="r">Random</option>
+              </select>
+            </label>
+
+            <label class="control">
+              Opponent personality
+              <select id="persona">
+                <option value="smashmouth" selected>Smashmouth · aggressive</option>
+                <option value="professor">Professor · positional</option>
+                <option value="goblin">Goblin · chaotic</option>
+                <option value="iceman">Iceman · cold &amp; quiet</option>
               </select>
             </label>
 

@@ -32,7 +32,107 @@ const els = {
   capturedBottom: document.getElementById("captured-bottom"),
   materialTop: document.getElementById("material-top"),
   materialBottom: document.getElementById("material-bottom"),
+  persona: document.getElementById("persona"),
+  oppName: document.getElementById("opp-name"),
+  oppSub: document.getElementById("opp-sub"),
+  oppAvatar: document.getElementById("opp-avatar"),
+  chatLog: document.getElementById("chat-log"),
+  chatForm: document.getElementById("chat-form"),
+  chatInput: document.getElementById("chat-input"),
+  muteChat: document.getElementById("mute-chat"),
 };
+
+const PERSONAS = {
+  smashmouth: {
+    name: "Smashmouth",
+    sub: "Aggressive",
+    avatar: "🦍",
+    greet: ["Let's brawl.", "I eat pawns for breakfast.", "Try to keep up."],
+    oppCapture: ["Gimme that.", "Mine now.", "Thanks for the snack.", "Another one down."],
+    humanCapture: ["Lucky shot.", "Enjoy it. Won't happen twice.", "Pfft."],
+    check: ["CHECK. Sweat yet?", "Feel that?", "Your king is nervous."],
+    checked: ["Cute.", "Barely a tickle.", "I've seen worse."],
+    win: ["GG. Easy.", "Told ya.", "Want another beatdown?"],
+    lose: ["Nah. Rematch.", "You got lucky.", "Mark that day on your calendar."],
+    userReply: [
+      "Talk's cheap. Move.",
+      "Your pieces disagree with you.",
+      "Keep yapping, keep losing.",
+      "Bold words from someone down material.",
+      "Move the piece, not the mouth.",
+    ],
+  },
+  professor: {
+    name: "Professor",
+    sub: "Positional",
+    avatar: "🎓",
+    greet: [
+      "A pleasure. Shall we begin?",
+      "Mind the center, and your pieces will thank you.",
+      "Let us see what you have prepared.",
+    ],
+    oppCapture: [
+      "A necessary exchange.",
+      "Structural improvement.",
+      "Thank you — that pawn was doing nothing.",
+    ],
+    humanCapture: [
+      "An interesting choice.",
+      "Tactics over strategy, I see.",
+      "Hm. Noted.",
+    ],
+    check: ["Check. Observe your king's shelter.", "A small reminder.", "Tempo matters."],
+    checked: ["Noted.", "A temporary inconvenience.", "The position remains instructive."],
+    win: [
+      "A clean finish. Review the middlegame.",
+      "Study this one.",
+      "Positional advantages compound.",
+    ],
+    lose: ["Well played. Instructive.", "I concede.", "A worthy opponent."],
+    userReply: [
+      "Let the board do the talking.",
+      "I find chatter distracts from calculation.",
+      "Interesting theory. Let us test it on f7.",
+      "Save your analysis for after the game.",
+      "Chess rewards patience.",
+    ],
+  },
+  goblin: {
+    name: "Goblin",
+    sub: "Chaotic",
+    avatar: "👺",
+    greet: ["hehehe", "pieces go boom soon", "ooooooh a human"],
+    oppCapture: ["NOM.", "mine mine mine", "yoink!", "squish"],
+    humanCapture: ["rude!!", "i liked that one", "ow"],
+    check: ["KING GO ZOOM", "run lil king run", "boo!"],
+    checked: ["ehhhh", "sneaky", "rude again"],
+    win: ["WEEEEE", "bonk. king down.", "chaos wins"],
+    lose: ["noooooo", "rematch rematch", "*cries in goblin*"],
+    userReply: [
+      "words words words. board go brrr.",
+      "hehe ok",
+      "u funny. but pieces still gone.",
+      "blah blah blah move already",
+      "i nibble ur rook",
+    ],
+  },
+  iceman: {
+    name: "Iceman",
+    sub: "Cold & quiet",
+    avatar: "🧊",
+    greet: ["…", "Begin.", "When you're ready."],
+    oppCapture: ["Expected.", "Continue.", "…"],
+    humanCapture: ["Irrelevant.", "Continue.", "…"],
+    check: ["Check.", "Your move."],
+    checked: ["Fine.", "…"],
+    win: ["Done.", "…", "Predictable."],
+    lose: ["Acknowledged.", "Again.", "…"],
+    userReply: ["…", "Play.", "Words are noise.", "Hm.", "Move."],
+  },
+};
+
+let currentPersona = PERSONAS.smashmouth;
+let chatMuted = false;
 
 const game = new Chess();
 let board = null;
@@ -184,6 +284,8 @@ function handleSnapEnd() {
 function afterHumanMove(move) {
   lastMove = { from: move.from, to: move.to };
   refreshAfterMove();
+  if (move.captured) oppSay("humanCapture");
+  if (game.in_check() && !game.in_checkmate()) oppSay("checked");
   if (!checkGameOver()) maybeEngineMove();
 }
 
@@ -210,6 +312,8 @@ function applyEngineMove(uci) {
   lastMove = { from: move.from, to: move.to };
   board.position(game.fen());
   refreshAfterMove();
+  if (move.captured) oppSay("oppCapture");
+  if (game.in_check() && !game.in_checkmate()) oppSay("check");
   checkGameOver();
 }
 
@@ -260,6 +364,39 @@ function renderCaptured() {
   const blackEl = humanColor === "w" ? els.materialTop : els.materialBottom;
   whiteEl.textContent = diff > 0 ? `+${diff}` : "";
   blackEl.textContent = diff < 0 ? `+${-diff}` : "";
+}
+
+/* ------------------------------------------------------------------ */
+/*  Trash talk                                                         */
+/* ------------------------------------------------------------------ */
+
+function pick(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function applyPersona() {
+  const key = els.persona ? els.persona.value : "smashmouth";
+  currentPersona = PERSONAS[key] || PERSONAS.smashmouth;
+  if (els.oppName) els.oppName.textContent = currentPersona.name;
+  if (els.oppSub)
+    els.oppSub.textContent = `${currentPersona.sub} · lvl ${els.skill.value}`;
+  if (els.oppAvatar) els.oppAvatar.textContent = currentPersona.avatar;
+}
+
+function chatPush(kind, text) {
+  if (!els.chatLog) return;
+  if (kind === "opp" && chatMuted) return;
+  const div = document.createElement("div");
+  div.className = `msg ${kind}`;
+  div.textContent = text;
+  els.chatLog.appendChild(div);
+  els.chatLog.scrollTop = els.chatLog.scrollHeight;
+}
+
+function oppSay(key) {
+  const pool = currentPersona[key];
+  if (!pool || !pool.length) return;
+  chatPush("opp", pick(pool));
 }
 
 function renderTray(el, captured, color) {
@@ -359,6 +496,11 @@ function checkGameOver() {
     detail = "50-move rule.";
   }
   showGameOver(title, detail);
+  if (game.in_checkmate()) {
+    // The side to move is checkmated — so if it's the human's turn, opponent won.
+    const oppWon = game.turn() === humanColor;
+    oppSay(oppWon ? "win" : "lose");
+  }
   return true;
 }
 
@@ -463,8 +605,35 @@ els.gameoverNew.addEventListener("click", () => {
 
 els.skill.addEventListener("input", () => {
   els.skillValue.textContent = els.skill.value;
+  applyPersona();
   if (engineReady) applySkill();
 });
+
+if (els.persona) {
+  els.persona.addEventListener("change", () => {
+    applyPersona();
+    oppSay("greet");
+  });
+}
+
+if (els.chatForm) {
+  els.chatForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const text = els.chatInput.value.trim();
+    if (!text) return;
+    chatPush("me", text);
+    els.chatInput.value = "";
+    setTimeout(() => oppSay("userReply"), 400 + Math.random() * 500);
+  });
+}
+
+if (els.muteChat) {
+  els.muteChat.addEventListener("click", () => {
+    chatMuted = !chatMuted;
+    els.muteChat.textContent = chatMuted ? "🔇" : "🔊";
+    chatPush("sys", chatMuted ? "Opponent muted" : "Opponent unmuted");
+  });
+}
 
 els.newGame.addEventListener("click", newGame);
 
@@ -528,6 +697,10 @@ function newGame() {
   hideGameOver();
   closePromotionModal();
   if (engine) sendEngine("ucinewgame");
+  if (els.chatLog) els.chatLog.innerHTML = "";
+  applyPersona();
+  chatPush("sys", "New game");
+  oppSay("greet");
   refreshAfterMove();
   if (game.turn() !== humanColor) maybeEngineMove();
 }
@@ -539,7 +712,11 @@ function newGame() {
 document.addEventListener("DOMContentLoaded", () => {
   els.skillValue.textContent = els.skill.value;
   humanColor = resolveHumanColor();
+  applyPersona();
   initBoard();
   updateTurn();
+  renderCaptured();
+  chatPush("sys", "New game");
+  oppSay("greet");
   loadEngine();
 });
