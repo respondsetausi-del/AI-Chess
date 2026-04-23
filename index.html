@@ -19,7 +19,19 @@
       </header>
 
       <section class="game">
-        <div id="board" class="board"></div>
+        <div class="board-area">
+          <div class="tray" id="tray-top">
+            <span class="tray-name" id="tray-top-name">Opponent</span>
+            <div class="captured" id="captured-top"></div>
+            <span class="material-diff" id="material-top"></span>
+          </div>
+          <div id="board" class="board"></div>
+          <div class="tray" id="tray-bottom">
+            <span class="tray-name" id="tray-bottom-name">You</span>
+            <div class="captured" id="captured-bottom"></div>
+            <span class="material-diff" id="material-bottom"></span>
+          </div>
+        </div>
 
         <aside class="sidebar">
           <div class="status-panel">

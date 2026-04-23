@@ -3,6 +3,11 @@
 const STOCKFISH_CDN =
   "https://cdn.jsdelivr.net/npm/stockfish.js@10.0.2/stockfish.js";
 
+const PIECE_VALUES = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
+const PIECE_ORDER = { q: 0, r: 1, b: 2, n: 3, p: 4, k: 5 };
+const PIECE_IMG = (color, type) =>
+  `https://cdn.jsdelivr.net/gh/oakmac/chessboardjs@v1.0.0/website/img/chesspieces/wikipedia/${color}${type.toUpperCase()}.png`;
+
 const els = {
   engineStatus: document.getElementById("engine-status"),
   turn: document.getElementById("turn"),
@@ -21,6 +26,12 @@ const els = {
   gameoverTitle: document.getElementById("gameover-title"),
   gameoverDetail: document.getElementById("gameover-detail"),
   gameoverNew: document.getElementById("gameover-new"),
+  trayTopName: document.getElementById("tray-top-name"),
+  trayBottomName: document.getElementById("tray-bottom-name"),
+  capturedTop: document.getElementById("captured-top"),
+  capturedBottom: document.getElementById("captured-bottom"),
+  materialTop: document.getElementById("material-top"),
+  materialBottom: document.getElementById("material-bottom"),
 };
 
 const game = new Chess();
@@ -206,8 +217,62 @@ function refreshAfterMove() {
   updateTurn();
   updateStatus();
   renderHistory();
+  renderCaptured();
   highlightLastMove();
   if (board) board.position(game.fen(), false);
+}
+
+function computeCaptured() {
+  // Captured pieces are derived from move history — no separate state to drift.
+  const byWhite = []; // black pieces white took
+  const byBlack = []; // white pieces black took
+  for (const m of game.history({ verbose: true })) {
+    if (!m.captured) continue;
+    const type = m.captured;
+    if (m.color === "w") byWhite.push(type);
+    else byBlack.push(type);
+  }
+  return { byWhite, byBlack };
+}
+
+function renderCaptured() {
+  const { byWhite, byBlack } = computeCaptured();
+
+  // Tray names reflect orientation (top = opponent by convention).
+  const humanLabel = "You";
+  const oppLabel = "Opponent";
+  if (humanColor === "w") {
+    els.trayBottomName.textContent = humanLabel;
+    els.trayTopName.textContent = oppLabel;
+    renderTray(els.capturedBottom, byWhite, "b"); // white captured black pieces
+    renderTray(els.capturedTop, byBlack, "w");
+  } else {
+    els.trayBottomName.textContent = humanLabel;
+    els.trayTopName.textContent = oppLabel;
+    renderTray(els.capturedBottom, byBlack, "w");
+    renderTray(els.capturedTop, byWhite, "b");
+  }
+
+  const whiteScore = byWhite.reduce((s, t) => s + PIECE_VALUES[t], 0);
+  const blackScore = byBlack.reduce((s, t) => s + PIECE_VALUES[t], 0);
+  const diff = whiteScore - blackScore;
+  const whiteEl = humanColor === "w" ? els.materialBottom : els.materialTop;
+  const blackEl = humanColor === "w" ? els.materialTop : els.materialBottom;
+  whiteEl.textContent = diff > 0 ? `+${diff}` : "";
+  blackEl.textContent = diff < 0 ? `+${-diff}` : "";
+}
+
+function renderTray(el, captured, color) {
+  const sorted = [...captured].sort(
+    (a, b) => PIECE_ORDER[a] - PIECE_ORDER[b]
+  );
+  el.innerHTML = "";
+  for (const type of sorted) {
+    const img = document.createElement("img");
+    img.src = PIECE_IMG(color, type);
+    img.alt = `${color}${type}`;
+    el.appendChild(img);
+  }
 }
 
 /* ------------------------------------------------------------------ */

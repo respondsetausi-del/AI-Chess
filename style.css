@@ -77,6 +77,61 @@ body {
   }
 }
 
+.board-area {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.tray {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  background: var(--panel);
+  border-radius: 8px;
+  min-height: 36px;
+  font-size: 13px;
+  max-width: 640px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.tray-name {
+  font-weight: 600;
+  flex-shrink: 0;
+  color: var(--text);
+}
+
+.captured {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1px;
+  min-height: 22px;
+  align-items: center;
+}
+
+.captured img {
+  width: 22px;
+  height: 22px;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.4));
+}
+
+.material-diff {
+  color: #f1c86b;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  min-width: 30px;
+  text-align: right;
+  font-size: 13px;
+}
+
+.material-diff:empty {
+  min-width: 0;
+}
+
 .board {
   width: 100%;
   max-width: 640px;
