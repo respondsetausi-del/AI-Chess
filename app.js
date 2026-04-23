@@ -51,6 +51,7 @@ const els = {
   chatForm: document.getElementById("chat-form"),
   chatInput: document.getElementById("chat-input"),
   muteChat: document.getElementById("mute-chat"),
+  style: document.getElementById("style"),
   gameoverClose: document.getElementById("gameover-close"),
   reviewList: document.getElementById("review-list"),
   lbBody: document.getElementById("lb-body"),
@@ -412,23 +413,76 @@ let suggestedMove = null;    // { from, to, promotion } from Stockfish for coach
 let awaitingSuggestion = false;
 let latestPV = [];           // most recent principal variation (UCI strings) from engine
 
-const COACH_HINTS_OPENING = [
-  "Develop a minor piece toward the center.",
-  "Control the center before moving the same piece twice.",
-  "Castle early to tuck your king behind a pawn wall.",
-  "Don't bring the queen out too soon — she gets chased.",
-];
-const COACH_HINTS_MIDDLE = [
-  "Look for tactics: forks, pins, discovered attacks.",
-  "Pieces before pawns — activity matters more than material here.",
-  "Trade when ahead, complicate when behind.",
-  "Find your worst-placed piece and improve it.",
-];
-const COACH_HINTS_ENDING = [
-  "King becomes a fighter in the endgame — activate it.",
-  "Push passed pawns. Every tempo counts.",
-  "Rook behind a passed pawn, always.",
-];
+const STYLES = {
+  aggressive: {
+    label: "Aggressive",
+    verb: "Strike with",
+    persona: "smashmouth",
+    hints: {
+      opening: [
+        "Punch through the center early.",
+        "Knights to attacking squares — threats before harmony.",
+        "Castle quick, then storm the kingside.",
+      ],
+      middle: [
+        "Look for sacrifices that crack the king.",
+        "Pressure pinned pieces — twist the screw.",
+        "Trade only if it speeds up your attack.",
+      ],
+      ending: [
+        "Activate the king as a battering ram.",
+        "Push pawns relentlessly.",
+        "Convert decisively — no quiet moves.",
+      ],
+    },
+  },
+  smooth: {
+    label: "Smooth",
+    verb: "Coach suggests",
+    persona: "professor",
+    hints: {
+      opening: [
+        "Develop a minor piece toward the center.",
+        "Control the center before moving the same piece twice.",
+        "Castle early to tuck your king behind a pawn wall.",
+      ],
+      middle: [
+        "Find your worst-placed piece and improve it.",
+        "Pieces before pawns — activity first.",
+        "Trade pieces when ahead, complicate when behind.",
+      ],
+      ending: [
+        "Bring the king to the action.",
+        "Rook behind a passed pawn — always.",
+        "Push passed pawns, but stay patient.",
+      ],
+    },
+  },
+  calculated: {
+    label: "Calculated",
+    verb: "Coach calculates",
+    persona: "iceman",
+    hints: {
+      opening: [
+        "Mind the long term: weaknesses, file ownership, color complexes.",
+        "Every move should improve a piece or fight for a square.",
+        "Anticipate your opponent's plan before completing yours.",
+      ],
+      middle: [
+        "Calculate forcing moves first: checks, captures, threats.",
+        "Identify the worst piece on the board and trade it off.",
+        "For each candidate move — what does it cost?",
+      ],
+      ending: [
+        "Count tempi. Every move matters.",
+        "Activate the king with a clear plan.",
+        "Calculate to a known endgame, then convert.",
+      ],
+    },
+  },
+};
+
+let currentStyle = "smooth";
 
 const game = new Chess();
 let board = null;
@@ -1080,12 +1134,13 @@ function updateCoachPanel() {
 
 function phaseHint() {
   const moves = game.history().length;
+  const style = STYLES[currentStyle] || STYLES.smooth;
   const pool =
     moves < 16
-      ? COACH_HINTS_OPENING
+      ? style.hints.opening
       : moves < 40
-      ? COACH_HINTS_MIDDLE
-      : COACH_HINTS_ENDING;
+      ? style.hints.middle
+      : style.hints.ending;
   return pick(pool);
 }
 
@@ -1271,7 +1326,8 @@ function handleSuggestion(uci, pv) {
     }
   }
 
-  const verb = currentMode === "team" ? "Coach offers" : "Coach suggests";
+  const styleVerb = (STYLES[currentStyle] || STYLES.smooth).verb;
+  const verb = currentMode === "team" ? "Coach offers" : styleVerb;
   let text = `${verb} ${san} — ${reason}.`;
   if (replySan) text += ` Expect …${replySan}`;
   if (nextSan) text += `, then plan ${nextSan}.`;
@@ -1687,6 +1743,22 @@ if (els.persona) {
   els.persona.addEventListener("change", () => {
     applyPersona();
     oppSay("greet");
+  });
+}
+
+if (els.style) {
+  els.style.addEventListener("change", () => {
+    currentStyle = els.style.value;
+    // Suggest a matching opponent persona but don't force it.
+    const recommended = (STYLES[currentStyle] || STYLES.smooth).persona;
+    if (els.persona && els.persona.value !== recommended) {
+      els.persona.value = recommended;
+      applyPersona();
+    }
+    if (els.coachHint && (currentMode === "coached" || currentMode === "team")) {
+      maybeSuggest();
+    }
+    chatPush("sys", `Style: ${(STYLES[currentStyle] || STYLES.smooth).label}`);
   });
 }
 
