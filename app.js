@@ -331,6 +331,7 @@ function handleSnapEnd() {
 
 function afterHumanMove(move) {
   lastMove = { from: move.from, to: move.to };
+  clearSuggestHighlight();
   refreshAfterMove();
   if (move.captured) oppSay("humanCapture");
   if (game.in_check() && !game.in_checkmate()) oppSay("checked");
@@ -477,6 +478,7 @@ function updateCoachPanel() {
   if (!els.coachPanel) return;
   if (currentMode === "classic") {
     els.coachPanel.classList.add("hidden");
+    clearSuggestHighlight();
     return;
   }
   els.coachPanel.classList.remove("hidden");
@@ -514,11 +516,26 @@ function maybeSuggest() {
   sendEngine(`go movetime 400`);
 }
 
+function clearSuggestHighlight() {
+  document
+    .querySelectorAll("#board .highlight-suggest, #board .highlight-suggest-to")
+    .forEach((el) =>
+      el.classList.remove("highlight-suggest", "highlight-suggest-to")
+    );
+}
+
+function highlightSuggestion(from, to) {
+  clearSuggestHighlight();
+  const a = squareEl(from);
+  const b = squareEl(to);
+  if (a) a.classList.add("highlight-suggest");
+  if (b) b.classList.add("highlight-suggest-to");
+}
+
 function handleSuggestion(uci) {
   const from = uci.slice(0, 2);
   const to = uci.slice(2, 4);
   const promotion = uci.length > 4 ? uci[4] : undefined;
-  // Preview via chess.js without mutating: try, then undo.
   const move = game.move({ from, to, promotion: promotion || "q" });
   if (!move) {
     els.coachHint.textContent = phaseHint();
@@ -527,6 +544,7 @@ function handleSuggestion(uci) {
   const san = move.san;
   game.undo();
   suggestedMove = { from, to, promotion };
+  highlightSuggestion(from, to);
   if (currentMode === "team") {
     els.coachHint.textContent = `Coach suggests ${san}. Play it, or pick your own.`;
   } else {
@@ -1012,6 +1030,7 @@ function newGame() {
   suggestedMove = null;
   awaitingSuggestion = false;
   resultRecorded = false;
+  clearSuggestHighlight();
   updateCoachPanel();
   if (els.coachHint) els.coachHint.textContent = "Make a move to get a hint.";
   refreshAfterMove();
