@@ -12,6 +12,20 @@
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
+    <nav class="track-bar">
+      <div class="track-brand">
+        <span class="track-logo">🎯</span>
+        <span class="track-name">Decision Engine</span>
+        <span class="track-badge">MVP</span>
+      </div>
+      <div class="track-tabs" role="tablist">
+        <button class="track active" data-track="chess" type="button">♟️ Chess</button>
+        <button class="track" data-track="decisions" type="button">🧠 Decisions</button>
+        <button class="track" data-track="math" type="button">➕ Math</button>
+      </div>
+    </nav>
+
+    <div id="track-chess">
     <main class="app" id="view-game">
       <header class="header">
         <div class="brand">
@@ -258,6 +272,105 @@
             <ol id="history" class="history"></ol>
           </div>
         </aside>
+      </section>
+    </main>
+    </div><!-- /#track-chess (view-leaderboard is a sibling, toggled by track JS) -->
+
+    <main class="app track-view hidden" id="track-decisions">
+      <section class="decisions-shell">
+        <header class="track-header">
+          <h2>🧠 Decisions</h2>
+          <p>Input a situation. Map actors and constraints. Simulate moves. Learn from consequences.</p>
+        </header>
+
+        <form id="dec-form" class="dec-form">
+          <label class="control">
+            Situation
+            <textarea id="dec-situation" rows="3" placeholder="My co-founder wants to raise VC. I don't want to dilute."></textarea>
+          </label>
+
+          <label class="control">
+            Actors (comma separated)
+            <input id="dec-actors" type="text" placeholder="Co-founder, Board, Lead engineer" />
+          </label>
+
+          <label class="control">
+            Goal
+            <textarea id="dec-goal" rows="2" placeholder="Reach Series A terms we both accept within 30 days."></textarea>
+          </label>
+
+          <div class="buttons">
+            <button id="dec-build" type="submit">Build State</button>
+            <button id="dec-reset" type="button" class="secondary">Reset</button>
+          </div>
+        </form>
+
+        <section id="dec-state" class="dec-state hidden">
+          <h3>Board state</h3>
+          <div class="dec-goal"><strong>Goal:</strong> <span id="dec-state-goal"></span></div>
+          <div class="dec-actors" id="dec-state-actors"></div>
+        </section>
+
+        <section id="dec-moves" class="dec-moves hidden">
+          <h3>Available moves</h3>
+          <ul id="dec-move-list" class="dec-move-list"></ul>
+        </section>
+
+        <section id="dec-outcome" class="dec-outcome hidden">
+          <h3>Predicted outcome</h3>
+          <p class="dec-note">Stub simulation — real AI analysis plugs in later.</p>
+          <div id="dec-reactions" class="dec-reactions"></div>
+          <div class="dec-consequences">
+            <div class="dec-row"><span class="dec-label">Short term</span><span id="dec-short"></span></div>
+            <div class="dec-row"><span class="dec-label">Long term</span><span id="dec-long"></span></div>
+            <div class="dec-row"><span class="dec-label">Trade-off</span><span id="dec-tradeoff"></span></div>
+          </div>
+          <button id="dec-another" type="button" class="secondary">Try another move</button>
+        </section>
+
+        <section class="dec-log-panel">
+          <h3>Move log</h3>
+          <ol id="dec-log" class="dec-log">
+            <li class="dec-empty">No decisions yet.</li>
+          </ol>
+        </section>
+      </section>
+    </main>
+
+    <main class="app track-view hidden" id="track-math">
+      <section class="math-shell">
+        <header class="track-header">
+          <h2>➕ Math as moves</h2>
+          <p>Equation = board. Steps = legal moves. Solution = end state.</p>
+        </header>
+
+        <div class="math-stage" id="math-stage">
+          <div class="math-problem-head">
+            <span class="math-problem-label">Factorize</span>
+            <span class="math-problem-eq" id="math-eq">x² + 5x + 6</span>
+          </div>
+
+          <p class="math-hint" id="math-hint">
+            Find two integers whose <b>sum</b> is <span id="math-b">5</span> and
+            whose <b>product</b> is <span id="math-c">6</span>.
+          </p>
+
+          <div class="math-candidates" id="math-candidates"></div>
+
+          <p class="math-feedback" id="math-feedback"></p>
+
+          <div class="buttons">
+            <button id="math-next" type="button">New problem</button>
+            <button id="math-solve" type="button" class="secondary">Reveal answer</button>
+          </div>
+        </div>
+
+        <section class="math-log-panel">
+          <h3>Solved</h3>
+          <ol id="math-log" class="dec-log">
+            <li class="dec-empty">No problems solved yet.</li>
+          </ol>
+        </section>
       </section>
     </main>
 

@@ -34,6 +34,99 @@ body {
   padding: 24px 20px 60px;
 }
 
+.track-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 10px 24px;
+  background: #0f1117;
+  border-bottom: 1px solid #2a2c33;
+  position: sticky;
+  top: 0;
+  z-index: 8;
+}
+
+.track-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.track-logo {
+  font-size: 20px;
+}
+
+.track-name {
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  color: #e8e8ea;
+  font-size: 14px;
+}
+
+.track-badge {
+  font-size: 10px;
+  font-weight: 700;
+  background: #4b8af0;
+  color: #051a35;
+  padding: 2px 8px;
+  border-radius: 999px;
+  letter-spacing: 0.6px;
+}
+
+.track-tabs {
+  display: flex;
+  gap: 6px;
+  background: #1a1c24;
+  padding: 4px;
+  border-radius: 999px;
+  border: 1px solid #2a2c33;
+}
+
+.track {
+  background: transparent;
+  color: var(--muted);
+  border: 0;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.track:hover {
+  color: var(--text);
+  background: transparent;
+}
+
+.track.active {
+  background: linear-gradient(135deg, #4b8af0, #a855f7);
+  color: white;
+}
+
+.track-view.hidden {
+  display: none;
+}
+
+.track-view {
+  display: block;
+  padding: 24px 20px 60px;
+  max-width: 920px;
+  margin: 0 auto;
+}
+
+.track-header h2 {
+  margin: 0 0 4px;
+  font-size: 24px;
+}
+
+.track-header p {
+  margin: 0 0 20px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
 .header {
   display: flex;
   align-items: center;
@@ -692,6 +785,292 @@ button.secondary:hover {
   font-style: italic;
   text-align: center;
   padding: 6px 0;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Decisions track                                                    */
+/* ------------------------------------------------------------------ */
+
+.decisions-shell,
+.math-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.dec-form {
+  background: var(--panel);
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dec-form textarea,
+.dec-form input[type="text"] {
+  width: 100%;
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid #42444d;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+}
+
+.dec-state,
+.dec-moves,
+.dec-outcome,
+.dec-log-panel,
+.math-stage,
+.math-log-panel {
+  background: var(--panel);
+  border-radius: 10px;
+  padding: 16px;
+}
+
+.dec-state.hidden,
+.dec-moves.hidden,
+.dec-outcome.hidden {
+  display: none;
+}
+
+.dec-state h3,
+.dec-moves h3,
+.dec-outcome h3,
+.dec-log-panel h3,
+.math-log-panel h3 {
+  margin: 0 0 10px;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--muted);
+}
+
+.dec-goal {
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+
+.dec-actors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.dec-actor-chip {
+  background: var(--panel-2);
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  border: 1px solid #42444d;
+}
+
+.dec-move-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 8px;
+}
+
+.dec-move-card {
+  background: var(--panel-2);
+  border: 1px solid #42444d;
+  border-radius: 8px;
+  padding: 12px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  color: inherit;
+  font: inherit;
+  width: 100%;
+}
+
+.dec-move-card:hover {
+  background: #3a3d48;
+  border-color: var(--accent);
+}
+
+.dec-move-card .dmc-emoji {
+  font-size: 22px;
+}
+
+.dec-move-card .dmc-label {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.dec-move-card .dmc-sub {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.dec-note {
+  margin: -4px 0 12px;
+  color: var(--muted);
+  font-size: 12px;
+  font-style: italic;
+}
+
+.dec-reactions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.dec-reaction {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 8px;
+  font-size: 13px;
+  padding: 6px 8px;
+  background: var(--panel-2);
+  border-radius: 6px;
+}
+
+.dec-reaction .dr-actor {
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.dec-consequences {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.dec-row {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.dec-label {
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  font-size: 11px;
+  align-self: center;
+}
+
+.dec-log {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 240px;
+  overflow-y: auto;
+  font-size: 13px;
+}
+
+.dec-log li {
+  background: var(--panel-2);
+  padding: 6px 10px;
+  border-radius: 6px;
+}
+
+.dec-log .dec-empty {
+  background: transparent;
+  color: var(--muted);
+  font-style: italic;
+  text-align: center;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Math track                                                         */
+/* ------------------------------------------------------------------ */
+
+.math-problem-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.math-problem-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+}
+
+.math-problem-eq {
+  font-size: 28px;
+  font-weight: 700;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--text);
+}
+
+.math-hint {
+  margin: 0 0 14px;
+  color: var(--text);
+  font-size: 14px;
+}
+
+.math-hint b {
+  color: var(--accent);
+}
+
+.math-candidates {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.math-pair-card {
+  background: var(--panel-2);
+  border: 1px solid #42444d;
+  border-radius: 8px;
+  padding: 10px;
+  cursor: pointer;
+  text-align: center;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.math-pair-card:hover {
+  background: #3a3d48;
+  border-color: var(--accent);
+}
+
+.math-pair-card.correct {
+  background: rgba(103, 195, 122, 0.25);
+  border-color: var(--ok);
+  color: var(--ok);
+}
+
+.math-pair-card.wrong {
+  background: rgba(224, 101, 90, 0.25);
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.math-feedback {
+  min-height: 20px;
+  margin: 0 0 14px;
+  font-size: 14px;
+}
+
+.math-feedback.ok {
+  color: var(--ok);
+}
+
+.math-feedback.bad {
+  color: var(--danger);
 }
 
 .engine-status {

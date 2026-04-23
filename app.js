@@ -82,6 +82,35 @@ const els = {
   librarySummary: document.getElementById("library-summary"),
   spellsCastable: document.getElementById("spells-castable"),
   spellsOnlyToggle: document.getElementById("spells-only-toggle"),
+  trackButtons: document.querySelectorAll(".track"),
+  trackChess: document.getElementById("track-chess"),
+  trackDecisions: document.getElementById("track-decisions"),
+  trackMath: document.getElementById("track-math"),
+  decForm: document.getElementById("dec-form"),
+  decSituation: document.getElementById("dec-situation"),
+  decActors: document.getElementById("dec-actors"),
+  decGoal: document.getElementById("dec-goal"),
+  decReset: document.getElementById("dec-reset"),
+  decState: document.getElementById("dec-state"),
+  decStateGoal: document.getElementById("dec-state-goal"),
+  decStateActors: document.getElementById("dec-state-actors"),
+  decMoves: document.getElementById("dec-moves"),
+  decMoveList: document.getElementById("dec-move-list"),
+  decOutcome: document.getElementById("dec-outcome"),
+  decReactions: document.getElementById("dec-reactions"),
+  decShort: document.getElementById("dec-short"),
+  decLong: document.getElementById("dec-long"),
+  decTradeoff: document.getElementById("dec-tradeoff"),
+  decAnother: document.getElementById("dec-another"),
+  decLog: document.getElementById("dec-log"),
+  mathEq: document.getElementById("math-eq"),
+  mathB: document.getElementById("math-b"),
+  mathC: document.getElementById("math-c"),
+  mathCandidates: document.getElementById("math-candidates"),
+  mathFeedback: document.getElementById("math-feedback"),
+  mathNext: document.getElementById("math-next"),
+  mathSolve: document.getElementById("math-solve"),
+  mathLog: document.getElementById("math-log"),
 };
 
 let spellsOnly = false;
@@ -2040,6 +2069,330 @@ function newGame() {
 /*  Boot                                                               */
 /* ------------------------------------------------------------------ */
 
+/* ------------------------------------------------------------------ */
+/*  Track switcher (Chess / Decisions / Math)                          */
+/* ------------------------------------------------------------------ */
+
+let currentTrack = "chess";
+
+function setTrack(track) {
+  currentTrack = track;
+  els.trackButtons.forEach((b) =>
+    b.classList.toggle("active", b.dataset.track === track)
+  );
+  // Hide everything first
+  if (els.trackChess) els.trackChess.style.display = "none";
+  if (els.viewLeaderboard) els.viewLeaderboard.classList.add("hidden");
+  if (els.trackDecisions) els.trackDecisions.classList.add("hidden");
+  if (els.trackMath) els.trackMath.classList.add("hidden");
+
+  if (track === "chess") {
+    if (els.trackChess) els.trackChess.style.display = "";
+    // Restore chess sub-mode visibility
+    if (currentMode === "leaderboard") {
+      els.viewGame.classList.add("hidden");
+      els.viewLeaderboard.classList.remove("hidden");
+    } else {
+      els.viewGame.classList.remove("hidden");
+      els.viewLeaderboard.classList.add("hidden");
+    }
+  } else if (track === "decisions") {
+    els.trackDecisions.classList.remove("hidden");
+  } else if (track === "math") {
+    els.trackMath.classList.remove("hidden");
+    if (!mathCurrent) mathNewProblem();
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Decisions                                                          */
+/* ------------------------------------------------------------------ */
+
+const DECISION_MOVES = [
+  { id: "confront", label: "Confront", emoji: "⚔️", sub: "Force the issue head-on" },
+  { id: "negotiate", label: "Negotiate", emoji: "🤝", sub: "Find shared ground" },
+  { id: "delay", label: "Delay", emoji: "⏳", sub: "Buy time, gather info" },
+  { id: "withdraw", label: "Withdraw", emoji: "🚪", sub: "Step back, conserve" },
+  { id: "escalate", label: "Escalate", emoji: "🚨", sub: "Raise stakes & visibility" },
+  { id: "ally", label: "Build alliance", emoji: "🫱", sub: "Recruit support" },
+  { id: "observe", label: "Observe", emoji: "👁️", sub: "Pass — watch what happens" },
+];
+
+const DEC_REACTION = {
+  confront: "Defends the position, may double down or push back.",
+  negotiate: "Engages cautiously; looks for what you'll concede.",
+  delay: "Reads it as weakness or wisdom — depends on prior signals.",
+  withdraw: "Relieved short-term, but assumes you've folded.",
+  escalate: "Goes on alert; brings in their own backup.",
+  ally: "Reassesses your influence; some swing toward you.",
+  observe: "Makes their move first — you learn their plan.",
+};
+
+const DEC_SHORT = {
+  confront: "Tension spikes; clear positions emerge.",
+  negotiate: "Slow movement, lower friction.",
+  delay: "Status quo holds; nothing decided yet.",
+  withdraw: "Immediate calm; nothing gained.",
+  escalate: "Loud and visible; harder to walk back.",
+  ally: "Quiet shift in the room; alliances visible later.",
+  observe: "You absorb information, give up tempo.",
+};
+
+const DEC_LONG = {
+  confront: "Either resolved decisively or relationship cracks.",
+  negotiate: "Compounds trust if honored, erodes if reneged.",
+  delay: "Window may close; pressure can build against you.",
+  withdraw: "Loses leverage; future asks get harder.",
+  escalate: "Reputation as someone who escalates — cuts both ways.",
+  ally: "Coalition value compounds; harder to unwind.",
+  observe: "Pattern recognition gains; first-mover advantage lost.",
+};
+
+const DEC_TRADEOFF = {
+  confront: "Speed for relationship cost.",
+  negotiate: "Optimality for momentum.",
+  delay: "Information for tempo.",
+  withdraw: "Cost avoidance for ground lost.",
+  escalate: "Visibility for reversibility.",
+  ally: "Time invested for resilience gained.",
+  observe: "Learning for initiative.",
+};
+
+const decState = { actors: [], goal: "", history: [] };
+
+function decBuildState(e) {
+  if (e) e.preventDefault();
+  const situation = els.decSituation.value.trim();
+  const actors = els.decActors.value
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const goal = els.decGoal.value.trim();
+  if (!situation || !actors.length || !goal) {
+    alert("Add a situation, at least one actor, and a goal.");
+    return;
+  }
+  decState.actors = actors;
+  decState.goal = goal;
+  els.decStateGoal.textContent = goal;
+  els.decStateActors.innerHTML = "";
+  for (const a of actors) {
+    const chip = document.createElement("span");
+    chip.className = "dec-actor-chip";
+    chip.textContent = a;
+    els.decStateActors.appendChild(chip);
+  }
+  els.decState.classList.remove("hidden");
+  decRenderMoves();
+  els.decOutcome.classList.add("hidden");
+}
+
+function decRenderMoves() {
+  els.decMoves.classList.remove("hidden");
+  els.decMoveList.innerHTML = "";
+  for (const m of DECISION_MOVES) {
+    const li = document.createElement("li");
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "dec-move-card";
+    btn.innerHTML = `
+      <span class="dmc-emoji">${m.emoji}</span>
+      <span class="dmc-label">${m.label}</span>
+      <span class="dmc-sub">${m.sub}</span>
+    `;
+    btn.addEventListener("click", () => decPickMove(m));
+    li.appendChild(btn);
+    els.decMoveList.appendChild(li);
+  }
+}
+
+function decPickMove(move) {
+  els.decReactions.innerHTML = "";
+  for (const a of decState.actors) {
+    const row = document.createElement("div");
+    row.className = "dec-reaction";
+    row.innerHTML = `<span class="dr-actor">${a}</span><span>${DEC_REACTION[move.id]}</span>`;
+    els.decReactions.appendChild(row);
+  }
+  els.decShort.textContent = DEC_SHORT[move.id];
+  els.decLong.textContent = DEC_LONG[move.id];
+  els.decTradeoff.textContent = DEC_TRADEOFF[move.id];
+  els.decOutcome.classList.remove("hidden");
+
+  decState.history.push(move);
+  decRenderLog();
+}
+
+function decRenderLog() {
+  if (!els.decLog) return;
+  els.decLog.innerHTML = "";
+  if (!decState.history.length) {
+    const li = document.createElement("li");
+    li.className = "dec-empty";
+    li.textContent = "No decisions yet.";
+    els.decLog.appendChild(li);
+    return;
+  }
+  decState.history.forEach((m, i) => {
+    const li = document.createElement("li");
+    li.textContent = `${i + 1}. ${m.emoji} ${m.label} → ${DEC_SHORT[m.id]}`;
+    els.decLog.appendChild(li);
+  });
+}
+
+function decReset() {
+  els.decSituation.value = "";
+  els.decActors.value = "";
+  els.decGoal.value = "";
+  decState.actors = [];
+  decState.goal = "";
+  decState.history = [];
+  els.decState.classList.add("hidden");
+  els.decMoves.classList.add("hidden");
+  els.decOutcome.classList.add("hidden");
+  decRenderLog();
+}
+
+/* ------------------------------------------------------------------ */
+/*  Math                                                               */
+/* ------------------------------------------------------------------ */
+
+let mathCurrent = null;
+const mathLog = [];
+
+function mathNewProblem() {
+  // Generate a quadratic x² + bx + c with integer roots p, q.
+  const p = randInt(-9, 9, [0]);
+  const q = randInt(-9, 9, [0]);
+  const b = p + q;
+  const c = p * q;
+  mathCurrent = { p, q, b, c };
+  els.mathEq.textContent = renderQuadratic(b, c);
+  els.mathB.textContent = String(b);
+  els.mathC.textContent = String(c);
+  els.mathFeedback.textContent = "";
+  els.mathFeedback.className = "math-feedback";
+  // Build candidate pairs: real factor pairs of c, plus a few decoys.
+  const pairs = factorPairs(c);
+  // Add decoys.
+  const decoys = [];
+  while (decoys.length < 3) {
+    const a = randInt(-6, 6, [0]);
+    const bv = randInt(-6, 6, [0]);
+    if (a * bv === c) continue;
+    if (pairs.some((pp) => pp[0] === a && pp[1] === bv)) continue;
+    decoys.push([a, bv]);
+  }
+  const all = shuffle([...pairs, ...decoys]);
+  els.mathCandidates.innerHTML = "";
+  for (const [a, bv] of all) {
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = "math-pair-card";
+    card.textContent = `(${a}, ${bv})`;
+    card.dataset.a = a;
+    card.dataset.b = bv;
+    card.addEventListener("click", () => mathPick(card, a, bv));
+    els.mathCandidates.appendChild(card);
+  }
+}
+
+function mathPick(card, a, bv) {
+  if (!mathCurrent) return;
+  const { b, c } = mathCurrent;
+  if (a + bv === b && a * bv === c) {
+    card.classList.add("correct");
+    els.mathFeedback.textContent = `Correct! ${els.mathEq.textContent} = (x ${signed(a)})(x ${signed(bv)})`;
+    els.mathFeedback.className = "math-feedback ok";
+    mathLog.unshift(
+      `${els.mathEq.textContent} = (x ${signed(a)})(x ${signed(bv)})`
+    );
+    mathRenderLog();
+    setTimeout(() => disableMathCards(), 50);
+  } else {
+    card.classList.add("wrong");
+    const reason =
+      a + bv !== b
+        ? `sum is ${a + bv}, need ${b}`
+        : `product is ${a * bv}, need ${c}`;
+    els.mathFeedback.textContent = `Not quite — ${reason}.`;
+    els.mathFeedback.className = "math-feedback bad";
+  }
+}
+
+function disableMathCards() {
+  els.mathCandidates
+    .querySelectorAll(".math-pair-card")
+    .forEach((c) => (c.disabled = true));
+}
+
+function mathReveal() {
+  if (!mathCurrent) return;
+  const { p, q } = mathCurrent;
+  els.mathFeedback.textContent = `Answer: (x ${signed(p)})(x ${signed(q)})`;
+  els.mathFeedback.className = "math-feedback ok";
+  disableMathCards();
+}
+
+function mathRenderLog() {
+  if (!els.mathLog) return;
+  els.mathLog.innerHTML = "";
+  if (!mathLog.length) {
+    const li = document.createElement("li");
+    li.className = "dec-empty";
+    li.textContent = "No problems solved yet.";
+    els.mathLog.appendChild(li);
+    return;
+  }
+  for (const item of mathLog.slice(0, 12)) {
+    const li = document.createElement("li");
+    li.textContent = item;
+    els.mathLog.appendChild(li);
+  }
+}
+
+function renderQuadratic(b, c) {
+  const bp = b === 0 ? "" : ` ${b > 0 ? "+" : "-"} ${Math.abs(b)}x`;
+  const cp = c === 0 ? "" : ` ${c > 0 ? "+" : "-"} ${Math.abs(c)}`;
+  return `x²${bp}${cp}`;
+}
+
+function signed(n) {
+  return n >= 0 ? `+ ${n}` : `- ${Math.abs(n)}`;
+}
+
+function randInt(lo, hi, exclude = []) {
+  let v;
+  do {
+    v = Math.floor(Math.random() * (hi - lo + 1)) + lo;
+  } while (exclude.includes(v));
+  return v;
+}
+
+function factorPairs(n) {
+  const seen = new Set();
+  const out = [];
+  for (let a = -Math.abs(n); a <= Math.abs(n); a++) {
+    if (a === 0) continue;
+    if (n % a !== 0) continue;
+    const b = n / a;
+    const key = `${Math.min(a, b)},${Math.max(a, b)}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push([a, b]);
+  }
+  return out.slice(0, 6);
+}
+
+function shuffle(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   els.skillValue.textContent = els.skill.value;
   humanColor = resolveHumanColor();
@@ -2052,4 +2405,22 @@ document.addEventListener("DOMContentLoaded", () => {
   chatPush("sys", "New game");
   oppSay("greet");
   loadEngine();
+
+  // Track switcher
+  els.trackButtons.forEach((b) =>
+    b.addEventListener("click", () => setTrack(b.dataset.track))
+  );
+
+  // Decisions wiring
+  if (els.decForm) els.decForm.addEventListener("submit", decBuildState);
+  if (els.decReset) els.decReset.addEventListener("click", decReset);
+  if (els.decAnother)
+    els.decAnother.addEventListener("click", () =>
+      els.decOutcome.classList.add("hidden")
+    );
+
+  // Math wiring
+  if (els.mathNext) els.mathNext.addEventListener("click", mathNewProblem);
+  if (els.mathSolve) els.mathSolve.addEventListener("click", mathReveal);
+  mathRenderLog();
 });
