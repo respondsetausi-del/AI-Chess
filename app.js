@@ -80,7 +80,11 @@ const els = {
   libraryCount: document.getElementById("library-count"),
   libraryList: document.getElementById("library-list"),
   librarySummary: document.getElementById("library-summary"),
+  spellsCastable: document.getElementById("spells-castable"),
+  spellsOnlyToggle: document.getElementById("spells-only-toggle"),
 };
+
+let spellsOnly = false;
 
 const SPELL_KEY = "ai_chess_spells_v1";
 
@@ -251,6 +255,148 @@ function renderLibrary() {
     li.append(name, kind);
     els.libraryList.appendChild(li);
   }
+}
+
+function findCastableSpells() {
+  if (game.turn() !== humanColor || gameOver) return [];
+  const items = [];
+  const moves = game.moves({ verbose: true });
+  const history = game.history();
+
+  // Openings: continue an unlocked book line.
+  for (const op of OPENING_BOOK) {
+    if (!unlockedSpells.has(`opening:${op.eco}`)) continue;
+    if (op.moves.length <= history.length) continue;
+    let prefixOk = true;
+    for (let i = 0; i < history.length; i++) {
+      if (op.moves[i] !== history[i]) {
+        prefixOk = false;
+        break;
+      }
+    }
+    if (!prefixOk) continue;
+    const m = moves.find((x) => x.san === op.moves[history.length]);
+    if (m)
+      items.push({
+        name: op.name,
+        san: m.san,
+        move: { from: m.from, to: m.to, promotion: m.promotion },
+      });
+  }
+
+  // Motifs: scan legal moves and tag any that match an unlocked motif.
+  for (const m of moves) {
+    const tags = [];
+    if (
+      (m.san === "O-O" || m.san === "O-O-O") &&
+      unlockedSpells.has("motif:castle")
+    )
+      tags.push("Castle of Refuge");
+    if (m.flags && m.flags.includes("p")) {
+      const id = m.promotion === "q" ? "motif:promote-q" : "motif:promote-minor";
+      const name = m.promotion === "q" ? "Pawn's Apotheosis" : "Underpromotion";
+      if (unlockedSpells.has(id)) tags.push(name);
+    }
+    if (m.flags && m.flags.includes("e") && unlockedSpells.has("motif:en-passant"))
+      tags.push("En Passant");
+    if (m.captured === "q" && unlockedSpells.has("motif:capture-queen"))
+      tags.push("Regicide-Adjacent");
+
+    const needsApply =
+      unlockedSpells.has("motif:check") ||
+      unlockedSpells.has("motif:checkmate") ||
+      unlockedSpells.has("motif:knight-fork");
+    if (needsApply) {
+      const tmp = new Chess(game.fen());
+      const applied = tmp.move({
+        from: m.from,
+        to: m.to,
+        promotion: m.promotion || "q",
+      });
+      if (applied) {
+        if (tmp.in_checkmate() && unlockedSpells.has("motif:checkmate"))
+          tags.push("Mate in Hand");
+        else if (tmp.in_check() && unlockedSpells.has("motif:check"))
+          tags.push("First Blood");
+        if (m.piece === "n" && unlockedSpells.has("motif:knight-fork")) {
+          const parts = tmp.fen().split(" ");
+          parts[1] = parts[1] === "w" ? "b" : "w";
+          parts[3] = "-";
+          let probe;
+          try { probe = new Chess(parts.join(" ")); } catch { probe = null; }
+          if (probe) {
+            const threats = probe
+              .moves({ verbose: true })
+              .filter(
+                (t) =>
+                  t.from === m.to && t.captured && PIECE_VALUES[t.captured] > 1
+              );
+            if (new Set(threats.map((t) => t.to)).size >= 2)
+              tags.push("Knight's Fork");
+          }
+        }
+      }
+    }
+
+    for (const name of tags) {
+      items.push({
+        name,
+        san: m.san,
+        move: { from: m.from, to: m.to, promotion: m.promotion },
+      });
+    }
+  }
+
+  // Dedupe.
+  const seen = new Set();
+  return items.filter((it) => {
+    const key = `${it.name}|${it.san}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function renderCastable() {
+  if (!els.spellsCastable) return;
+  const items = findCastableSpells();
+  els.spellsCastable.innerHTML = "";
+  if (!items.length) {
+    const li = document.createElement("li");
+    li.className = "spells-empty";
+    li.textContent = spellsOnly
+      ? "No castable spells. Toggle off Spells-only to keep playing."
+      : "No castable spells in this position.";
+    els.spellsCastable.appendChild(li);
+    return;
+  }
+  for (const it of items.slice(0, 8)) {
+    const li = document.createElement("li");
+    li.className = "spell-item";
+    const name = document.createElement("div");
+    name.className = "si-name";
+    name.innerHTML = `<span>${it.name}</span><span class="si-san">${it.san}</span>`;
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = "Cast";
+    btn.addEventListener("click", () => castSpell(it));
+    li.append(name, btn);
+    els.spellsCastable.appendChild(li);
+  }
+}
+
+function castSpell(item) {
+  if (gameOver || arena.active) return;
+  if (game.turn() !== humanColor) return;
+  const m = game.move({
+    from: item.move.from,
+    to: item.move.to,
+    promotion: item.move.promotion || "q",
+  });
+  if (!m) return;
+  chatPush("sys", `✨ Cast ${item.name}: ${m.san}`);
+  board.position(game.fen(), false);
+  afterHumanMove(m);
 }
 
 function detectMotifSpells(move) {
@@ -623,6 +769,16 @@ function handleDrop(source, target) {
   const piece = game.get(source);
   if (!piece) return "snapback";
 
+  if (spellsOnly && !arena.active) {
+    const allowed = findCastableSpells().some(
+      (s) => s.move.from === source && s.move.to === target
+    );
+    if (!allowed) {
+      chatPush("sys", "Spells-only: that move isn't a castable spell.");
+      return "snapback";
+    }
+  }
+
   const isPromotion =
     piece.type === "p" &&
     ((piece.color === "w" && target[1] === "8") ||
@@ -707,6 +863,7 @@ function refreshAfterMove() {
   renderHistory();
   renderCaptured();
   highlightLastMove();
+  renderCastable();
   if (board) board.position(game.fen(), false);
 }
 
@@ -1743,6 +1900,17 @@ if (els.persona) {
   els.persona.addEventListener("change", () => {
     applyPersona();
     oppSay("greet");
+  });
+}
+
+if (els.spellsOnlyToggle) {
+  els.spellsOnlyToggle.addEventListener("change", () => {
+    spellsOnly = els.spellsOnlyToggle.checked;
+    chatPush(
+      "sys",
+      spellsOnly ? "Spells-only mode ON" : "Spells-only mode OFF"
+    );
+    renderCastable();
   });
 }
 

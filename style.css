@@ -600,6 +600,100 @@ button.secondary:hover {
   color: #a8c8c2;
 }
 
+.spells {
+  background: linear-gradient(180deg, #2c1f3a, #1d1326);
+  border: 1px solid #4a3856;
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.spells-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.spells-title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: #d5c6ff;
+}
+
+.spells-only {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.spells-only input {
+  margin: 0;
+  accent-color: #a855f7;
+}
+
+.spells-castable {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.spells-castable .spell-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 6px;
+}
+
+.spells-castable .spell-item .si-name {
+  flex: 1;
+  font-size: 13px;
+  color: #e7d8ff;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.spells-castable .spell-item .si-san {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: #a590d0;
+}
+
+.spells-castable .spell-item button {
+  background: rgba(168, 85, 247, 0.4);
+  color: white;
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 4px;
+}
+
+.spells-castable .spell-item button:hover {
+  background: rgba(168, 85, 247, 0.65);
+}
+
+.spells-empty {
+  color: var(--muted);
+  font-size: 12px;
+  font-style: italic;
+  text-align: center;
+  padding: 6px 0;
+}
+
 .engine-status {
   margin: 0;
   color: var(--muted);
