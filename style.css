@@ -250,6 +250,76 @@ button.secondary:hover {
   background: #42444d;
 }
 
+.survival-panel {
+  background: linear-gradient(180deg, #3a1f24, #261313);
+  border: 1px solid #5a2c34;
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.survival-panel.hidden {
+  display: none;
+}
+
+.survival-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.survival-title {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  color: #ffb1a8;
+}
+
+.pu-badge.danger {
+  color: #2b1313;
+  background: #ffb1a8;
+}
+
+.survival-sub {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.survival-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.ss-cell {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 6px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ss-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+}
+
+.ss-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffb1a8;
+  font-variant-numeric: tabular-nums;
+}
+
 .arena-panel {
   background: linear-gradient(180deg, #1f2c3a, #131c26);
   border: 1px solid #2c425a;

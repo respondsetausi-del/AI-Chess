@@ -23,6 +23,7 @@
           <button class="mode" data-mode="coached" role="tab">Coached</button>
           <button class="mode" data-mode="team" role="tab">Team</button>
           <button class="mode" data-mode="arena" role="tab">Arena</button>
+          <button class="mode" data-mode="survival" role="tab">Survival</button>
           <button class="mode" data-mode="leaderboard" role="tab">Leaderboard</button>
         </nav>
       </header>
@@ -74,6 +75,45 @@
           <div class="status-panel">
             <div id="turn" class="turn">White to move</div>
             <div id="status" class="status"></div>
+          </div>
+
+          <div id="survival-panel" class="survival-panel hidden">
+            <div class="survival-head">
+              <span class="survival-title">💀 Survival</span>
+              <span class="pu-badge danger">RUTHLESS</span>
+            </div>
+            <p class="survival-sub">
+              Hold out as long as you can against an unforgiving engine.
+              Plies survived = your score.
+            </p>
+
+            <label class="control">
+              Difficulty
+              <select id="survival-difficulty">
+                <option value="rookie">Rookie · down a pawn · lvl 16</option>
+                <option value="warrior" selected>Warrior · down a knight · lvl 18</option>
+                <option value="brutal">Brutal · down a queen · lvl 20</option>
+                <option value="lunatic">Lunatic · stripped pieces · lvl 20 deep</option>
+              </select>
+            </label>
+
+            <div class="survival-stats">
+              <div class="ss-cell">
+                <span class="ss-label">Plies survived</span>
+                <span class="ss-value" id="survival-plies">0</span>
+              </div>
+              <div class="ss-cell">
+                <span class="ss-label">Best (this tier)</span>
+                <span class="ss-value" id="survival-best">—</span>
+              </div>
+            </div>
+
+            <div class="buttons">
+              <button id="survival-start" type="button">Start Run</button>
+              <button id="survival-retry" type="button" class="secondary">Retry</button>
+            </div>
+
+            <p id="survival-status" class="arena-status">Pick a tier and start your run.</p>
           </div>
 
           <div id="arena-panel" class="arena-panel hidden">

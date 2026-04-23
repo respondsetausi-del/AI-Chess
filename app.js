@@ -69,6 +69,13 @@ const els = {
   arenaStep: document.getElementById("arena-step"),
   arenaReset: document.getElementById("arena-reset"),
   arenaStatus: document.getElementById("arena-status"),
+  survivalPanel: document.getElementById("survival-panel"),
+  survivalDifficulty: document.getElementById("survival-difficulty"),
+  survivalStart: document.getElementById("survival-start"),
+  survivalRetry: document.getElementById("survival-retry"),
+  survivalPlies: document.getElementById("survival-plies"),
+  survivalBest: document.getElementById("survival-best"),
+  survivalStatus: document.getElementById("survival-status"),
   libraryCount: document.getElementById("library-count"),
   libraryList: document.getElementById("library-list"),
   librarySummary: document.getElementById("library-summary"),
@@ -107,6 +114,21 @@ const arena = {
   white: null,
   black: null,
   movetime: 500,
+};
+
+const SURVIVAL_TIERS = {
+  rookie:  { label: "Rookie",  skill: 16, movetime: 800,  strip: ["d2"] },
+  warrior: { label: "Warrior", skill: 18, movetime: 1200, strip: ["d2", "b1"] },
+  brutal:  { label: "Brutal",  skill: 20, movetime: 2000, strip: ["d1"] },
+  lunatic: { label: "Lunatic", skill: 20, movetime: 3000, strip: ["d1", "b1", "g1"] },
+};
+
+const SURVIVAL_BEST_KEY = "ai_chess_survival_best_v1";
+
+const survival = {
+  active: false,
+  tier: "warrior",
+  plies: 0,
 };
 
 const LB_KEY = "ai_chess_leaderboard_v1";
@@ -582,6 +604,7 @@ function afterHumanMove(move) {
   clearSuggestHighlight();
   hideOppIntent();
   refreshAfterMove();
+  if (survival.active) survivalIncPly();
   if (move.captured) oppSay("humanCapture");
   if (game.in_check() && !game.in_checkmate()) oppSay("checked");
   detectMotifSpells(move);
@@ -617,6 +640,7 @@ function applyEngineMove(uci) {
   lastMove = { from: move.from, to: move.to };
   board.position(game.fen());
   refreshAfterMove();
+  if (survival.active) survivalIncPly();
   if (move.captured) oppSay("oppCapture");
   if (game.in_check() && !game.in_checkmate()) oppSay("check");
   showOppIntent(move);
@@ -731,8 +755,130 @@ function setMode(mode) {
     leaveArena();
   }
 
+  if (mode === "survival") {
+    enterSurvival();
+  } else if (prevMode === "survival") {
+    leaveSurvival();
+  }
+
   updateCoachPanel();
   if (mode === "coached" || mode === "team") maybeSuggest();
+}
+
+/* ------------------------------------------------------------------ */
+/*  Survival mode                                                      */
+/* ------------------------------------------------------------------ */
+
+function loadSurvivalBest() {
+  try { return JSON.parse(localStorage.getItem(SURVIVAL_BEST_KEY)) || {}; }
+  catch { return {}; }
+}
+
+function saveSurvivalBest(map) {
+  localStorage.setItem(SURVIVAL_BEST_KEY, JSON.stringify(map));
+}
+
+function survivalSetStatus(text) {
+  if (els.survivalStatus) els.survivalStatus.textContent = text;
+}
+
+function refreshSurvivalBest() {
+  if (!els.survivalBest) return;
+  const tier = els.survivalDifficulty.value;
+  const best = loadSurvivalBest()[tier];
+  els.survivalBest.textContent = best != null ? best : "—";
+}
+
+function enterSurvival() {
+  survival.active = true;
+  survival.plies = 0;
+  els.survivalPanel.classList.remove("hidden");
+  els.humanControls.classList.add("hidden");
+  if (els.survivalPlies) els.survivalPlies.textContent = "0";
+  refreshSurvivalBest();
+  survivalSetStatus("Pick a tier and start your run.");
+
+  // Reset board to start; user starts the run when they click Start.
+  game.reset();
+  resultRecorded = false;
+  gameOver = false;
+  thinking = false;
+  awaitingSuggestion = false;
+  lastMove = null;
+  humanColor = "w";
+  if (board) {
+    board.orientation("white");
+    board.position("start", false);
+  }
+  refreshAfterMove();
+}
+
+function leaveSurvival() {
+  survival.active = false;
+  els.survivalPanel.classList.add("hidden");
+  els.humanControls.classList.remove("hidden");
+  if (engine) sendEngine("stop");
+  newGame();
+}
+
+function survivalStart() {
+  const tierKey = els.survivalDifficulty.value;
+  const tier = SURVIVAL_TIERS[tierKey];
+  survival.tier = tierKey;
+  survival.plies = 0;
+  resultRecorded = false;
+  gameOver = false;
+  thinking = false;
+  awaitingSuggestion = false;
+  lastMove = null;
+  humanColor = "w";
+
+  // Build the position by stripping pieces from the standard start.
+  const tmp = new Chess();
+  for (const sq of tier.strip) tmp.remove(sq);
+  game.load(tmp.fen());
+  if (board) board.position(game.fen(), false);
+
+  // Engine config for this tier.
+  if (engineReady) {
+    sendEngine("ucinewgame");
+    sendEngine(`setoption name Skill Level value ${tier.skill}`);
+  }
+  if (els.movetime) els.movetime.value = String(tier.movetime);
+  if (els.skill) {
+    els.skill.value = String(tier.skill);
+    if (els.skillValue) els.skillValue.textContent = String(tier.skill);
+  }
+
+  if (els.survivalPlies) els.survivalPlies.textContent = "0";
+  refreshSurvivalBest();
+  survivalSetStatus(`Run started — ${tier.label}. Hold them off.`);
+  refreshAfterMove();
+  // Human plays first (white).
+}
+
+function survivalIncPly() {
+  survival.plies += 1;
+  if (els.survivalPlies) els.survivalPlies.textContent = String(survival.plies);
+}
+
+function survivalRecordResult() {
+  if (resultRecorded) return;
+  resultRecorded = true;
+  const map = loadSurvivalBest();
+  const prev = map[survival.tier] ?? -1;
+  if (survival.plies > prev) {
+    map[survival.tier] = survival.plies;
+    saveSurvivalBest(map);
+    survivalSetStatus(
+      `New best on ${SURVIVAL_TIERS[survival.tier].label}: ${survival.plies} plies survived.`
+    );
+  } else {
+    survivalSetStatus(
+      `Run over: ${survival.plies} plies. Best on ${SURVIVAL_TIERS[survival.tier].label}: ${prev}.`
+    );
+  }
+  refreshSurvivalBest();
 }
 
 /* ------------------------------------------------------------------ */
@@ -1248,9 +1394,11 @@ function checkGameOver() {
   if (game.in_checkmate()) {
     const oppWon = game.turn() === humanColor;
     oppSay(oppWon ? "win" : "lose");
-    recordResult(oppWon ? "loss" : "win");
+    if (survival.active) survivalRecordResult();
+    else recordResult(oppWon ? "loss" : "win");
   } else {
-    recordResult("draw");
+    if (survival.active) survivalRecordResult();
+    else recordResult("draw");
   }
   return true;
 }
@@ -1502,6 +1650,11 @@ if (els.arenaStart) els.arenaStart.addEventListener("click", arenaStart);
 if (els.arenaPause) els.arenaPause.addEventListener("click", arenaPause);
 if (els.arenaStep) els.arenaStep.addEventListener("click", arenaStep);
 if (els.arenaReset) els.arenaReset.addEventListener("click", arenaReset);
+
+if (els.survivalStart) els.survivalStart.addEventListener("click", survivalStart);
+if (els.survivalRetry) els.survivalRetry.addEventListener("click", survivalStart);
+if (els.survivalDifficulty)
+  els.survivalDifficulty.addEventListener("change", refreshSurvivalBest);
 
 if (els.puOpening) {
   els.puOpening.addEventListener("click", () => {
