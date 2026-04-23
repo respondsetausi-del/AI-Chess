@@ -240,6 +240,7 @@ let chatMuted = false;
 let currentMode = "classic"; // classic | coached | team
 let suggestedMove = null;    // { from, to, promotion } from Stockfish for coach/team
 let awaitingSuggestion = false;
+let latestPV = [];           // most recent principal variation (UCI strings) from engine
 
 const COACH_HINTS_OPENING = [
   "Develop a minor piece toward the center.",
@@ -321,9 +322,19 @@ function onEngineMessage(e) {
     }
     return;
   }
+  if (line.startsWith("info ")) {
+    const pvIdx = line.indexOf(" pv ");
+    if (pvIdx !== -1) {
+      latestPV = line.slice(pvIdx + 4).trim().split(/\s+/);
+    }
+    return;
+  }
+
   if (line.startsWith("bestmove")) {
     const parts = line.split(/\s+/);
     const move = parts[1];
+    const pv = latestPV.slice();
+    latestPV = [];
     if (arena.active) {
       thinking = false;
       if (move && move !== "(none)") arenaApplyMove(move);
@@ -331,7 +342,7 @@ function onEngineMessage(e) {
     }
     if (awaitingSuggestion) {
       awaitingSuggestion = false;
-      if (move && move !== "(none)") handleSuggestion(move);
+      if (move && move !== "(none)") handleSuggestion(move, pv);
       return;
     }
     thinking = false;
@@ -793,9 +804,16 @@ function maybeSuggest() {
 
 function clearSuggestHighlight() {
   document
-    .querySelectorAll("#board .highlight-suggest, #board .highlight-suggest-to")
+    .querySelectorAll(
+      "#board .highlight-suggest, #board .highlight-suggest-to, #board .highlight-predict, #board .highlight-predict-to"
+    )
     .forEach((el) =>
-      el.classList.remove("highlight-suggest", "highlight-suggest-to")
+      el.classList.remove(
+        "highlight-suggest",
+        "highlight-suggest-to",
+        "highlight-predict",
+        "highlight-predict-to"
+      )
     );
 }
 
@@ -807,7 +825,55 @@ function highlightSuggestion(from, to) {
   if (b) b.classList.add("highlight-suggest-to");
 }
 
-function handleSuggestion(uci) {
+function highlightPredict(from, to) {
+  const a = squareEl(from);
+  const b = squareEl(to);
+  if (a) a.classList.add("highlight-predict");
+  if (b) b.classList.add("highlight-predict-to");
+}
+
+function describeMoveReason(move) {
+  const NAMES = {
+    p: "pawn", n: "knight", b: "bishop", r: "rook", q: "queen", k: "king",
+  };
+  if (move.san.includes("#")) return "delivers checkmate";
+  if (move.captured)
+    return `captures the ${NAMES[move.captured]}`;
+  if (move.san.includes("+")) return "delivers check";
+  if (move.san === "O-O" || move.san === "O-O-O")
+    return "castles for king safety";
+  if (move.flags && move.flags.includes("p"))
+    return "promotes the pawn";
+  if (move.flags && move.flags.includes("e"))
+    return "captures en passant";
+  if (["d4", "d5", "e4", "e5"].includes(move.to))
+    return "stakes the center";
+  const homeRank = move.color === "w" ? "1" : "8";
+  if ((move.piece === "n" || move.piece === "b") && move.from[1] === homeRank)
+    return `develops a ${NAMES[move.piece]}`;
+  if (move.piece === "p" && (move.to[1] === "4" || move.to[1] === "5"))
+    return "claims space with a pawn";
+  if (move.piece === "r" && (move.to[0] === "d" || move.to[0] === "e"))
+    return "centralizes the rook on an open file";
+  if (move.piece === "q") return "activates the queen";
+  return "improves the position";
+}
+
+function uciToSanWithPremoves(uci, premoves) {
+  if (!uci || uci.length < 4) return null;
+  const tmp = new Chess(game.fen());
+  for (const pm of premoves) {
+    if (!tmp.move(pm)) return null;
+  }
+  const result = tmp.move({
+    from: uci.slice(0, 2),
+    to: uci.slice(2, 4),
+    promotion: uci.length > 4 ? uci[4] : "q",
+  });
+  return result ? result.san : null;
+}
+
+function handleSuggestion(uci, pv) {
   const from = uci.slice(0, 2);
   const to = uci.slice(2, 4);
   const promotion = uci.length > 4 ? uci[4] : undefined;
@@ -817,14 +883,42 @@ function handleSuggestion(uci) {
     return;
   }
   const san = move.san;
+  const reason = describeMoveReason(move);
   game.undo();
   suggestedMove = { from, to, promotion };
   highlightSuggestion(from, to);
-  if (currentMode === "team") {
-    els.coachHint.textContent = `Coach suggests ${san}. Play it, or pick your own.`;
-  } else {
-    els.coachHint.textContent = `Coach suggests ${san}. ${phaseHint()}`;
+
+  // Walk the PV to surface the expected reply and our follow-up.
+  let replySan = null;
+  let nextSan = null;
+  if (pv && pv.length >= 2) {
+    replySan = uciToSanWithPremoves(pv[1], [
+      { from, to, promotion: promotion || "q" },
+    ]);
+    if (replySan) {
+      const replyFrom = pv[1].slice(0, 2);
+      const replyTo = pv[1].slice(2, 4);
+      highlightPredict(replyFrom, replyTo);
+    }
+    if (pv.length >= 3 && replySan) {
+      nextSan = uciToSanWithPremoves(pv[2], [
+        { from, to, promotion: promotion || "q" },
+        {
+          from: pv[1].slice(0, 2),
+          to: pv[1].slice(2, 4),
+          promotion: pv[1].length > 4 ? pv[1][4] : "q",
+        },
+      ]);
+    }
   }
+
+  const verb = currentMode === "team" ? "Coach offers" : "Coach suggests";
+  let text = `${verb} ${san} — ${reason}.`;
+  if (replySan) text += ` Expect …${replySan}`;
+  if (nextSan) text += `, then plan ${nextSan}.`;
+  else if (replySan) text += ".";
+  if (currentMode === "team") text += " Play it, or pick your own.";
+  els.coachHint.textContent = text;
 }
 
 function acceptSuggestion() {

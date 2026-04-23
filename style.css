@@ -775,6 +775,15 @@ button:disabled {
     inset 0 0 30px rgba(106, 169, 255, 0.25);
 }
 
+.highlight-predict {
+  box-shadow: inset 0 0 0 3px rgba(241, 200, 107, 0.6);
+}
+
+.highlight-predict-to {
+  box-shadow: inset 0 0 0 3px rgba(241, 200, 107, 0.6),
+    inset 0 0 24px rgba(241, 200, 107, 0.18);
+}
+
 /* chessboard.js squares are position:relative by default; ensure overlay dots position correctly */
 .board .square-55d63 {
   position: relative;
